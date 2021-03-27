@@ -367,7 +367,7 @@ if __name__ == "__main__":
     pool = PoolContract()
     scenario += pool
 
-    # WHEN updateOvenupdateOvenRegistryAddressRegistry is called by someone other than the governor
+    # WHEN updateOvenRegistryAddress is called by someone other than the governor
     # THEN the call will fail
     notGovernor = Addresses.NULL_ADDRESS
     scenario += pool.updateOvenRegistryAddress(Addresses.ROTATED_ADDRESS).run(
