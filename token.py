@@ -17,50 +17,11 @@ class FA12(sp.Contract):
         administratorAddress = Addresses.ADMIN_ADDRESS,
         **extra_storage
     ):
-        # CHANGED: Add metadata
-        token_id = sp.nat(0)
-
-        token_data = sp.map(
-            l = {
-                "name": sp.bytes('0x00'), # 
-                "decimals": sp.bytes('0x00'), # 18
-                "symbol": sp.bytes('0x00'), # kUSD
-                "icon": sp.bytes('0x00') #
-            },
-            tkey = sp.TString,
-            tvalue = sp.TBytes
-        )
-        token_entry = (token_id, token_data)
-        token_metadata = sp.big_map(
-            l = {
-                token_id: token_entry,
-            },
-            tkey = sp.TNat,
-            tvalue = sp.TPair(sp.TNat, sp.TMap(sp.TString, sp.TBytes))
-        )
-        
-        # Hexadecimal representation of:
-        metadata_data = sp.bytes('0x00')
-
-        metadata = sp.big_map(
-            l = {
-                "": sp.bytes('0x74657a6f732d73746f726167653a64617461'), # "tezos-storage:data"
-                "data": metadata_data
-            },
-            tkey = sp.TString,
-            tvalue = sp.TBytes            
-        )
-
         self.init(
             administrator = administratorAddress,
             paused = False,
             balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
             totalSupply = 0, 
-
-            # CHANGED: Include metadata and token_metadata bigmap in storage.
-            metadata = metadata,
-            token_metadata = token_metadata,
-                        
             **extra_storage
         )
 

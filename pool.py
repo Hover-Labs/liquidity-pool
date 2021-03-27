@@ -46,6 +46,39 @@ class PoolContract(Token.FA12):
     savedState_tokensToDeposit = sp.none,
     savedState_depositor = sp.none,
   ):
+    token_id = sp.nat(0)
+
+    token_metadata = sp.map(
+      l = {
+        "name": sp.bytes('0x446578746572204c69717569646174696e67206b555344'), # Dexter Liquidating kUSD
+        "decimals": sp.bytes('0x3138'), # 18
+        "symbol": sp.bytes('0x6465787465724c6b555344'), # dexterLkUSD
+        "icon": sp.bytes('0x2068747470733a2f2f6b6f6c696272692d646174612e73332e616d617a6f6e6177732e636f6d2f6c6f676f2e706e67') # https://kolibri-data.s3.amazonaws.com/logo.png
+      },
+      tkey = sp.TString,
+      tvalue = sp.TBytes
+    )
+    token_entry = (token_id, token_metadata)
+    token_metadata = sp.big_map(
+      l = {
+        token_id: token_entry,
+      },
+      tkey = sp.TNat,
+      tvalue = sp.TPair(sp.TNat, sp.TMap(sp.TString, sp.TBytes))
+    )
+        
+    # Hexadecimal representation of:
+    # { "name": "Dexter Liquidating kUSD",  "description": "Staked kUSD in a Dexter liquidation system",  "authors": ["Hover Labs <hello@hover.engineering>"],  "homepage":  "https://kolibri.finance" }
+    metadata_data = sp.bytes('0x7b20226e616d65223a2022446578746572204c69717569646174696e67206b555344222c2020226465736372697074696f6e223a20225374616b6564206b55534420696e206120446578746572206c69717569646174696f6e2073797374656d222c202022617574686f7273223a205b22486f766572204c616273203c68656c6c6f40686f7665722e656e67696e656572696e673e225d2c202022686f6d6570616765223a20202268747470733a2f2f6b6f6c696272692e66696e616e636522207d0a')
+    metadata = sp.big_map(
+      l = {
+        "": sp.bytes('0x74657a6f732d73746f726167653a64617461'), # "tezos-storage:data"
+        "data": metadata_data
+      },
+      tkey = sp.TString,
+      tvalue = sp.TBytes            
+    )
+
     self.init(
       # Parent class fields
       administrator = administrator,
@@ -53,7 +86,11 @@ class PoolContract(Token.FA12):
       balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
       totalSupply = 0,
 
-      # Addresses.
+      # Metadata
+      metadata = metadata,
+      token_metadata = token_metadata,
+
+      # Addresses
       dexterAddress = dexterAddress,
       governorAddress = governorAddress,
       ovenRegistryAddress = ovenRegistryAddress,
@@ -369,6 +406,25 @@ class PoolContract(Token.FA12):
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
     self.data.ovenRegistryAddress = newOvenRegistryAddress    
 
+  # Update contract metadata
+  @sp.entry_point	
+  def updateContractMetadata(self, params):	
+    sp.set_type(params, sp.TPair(sp.TString, sp.TBytes))	
+
+    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+
+    key = sp.fst(params)
+    value = sp.snd(params)	
+    self.data.metadata[key] = value
+
+  # Update token metadata
+  @sp.entry_point	
+  def updateTokenMetadata(self, params):	
+    sp.set_type(params, sp.TPair(sp.TNat, sp.TMap(sp.TString, sp.TBytes)))	
+
+    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    self.data.token_metadata[0] = params
+
 # Only run tests if this file is main.
 if __name__ == "__main__":
 
@@ -376,6 +432,110 @@ if __name__ == "__main__":
   FakeDexter = sp.import_script_from_url("file:./test-helpers/fake-dexter-pool.py")
   FakeOven = sp.import_script_from_url("file:./test-helpers/fake-oven.py")
   FakeOvenRegistry = sp.import_script_from_url("file:./test-helpers/fake-oven-registry.py")
+
+  ################################################################
+  # updateContractMetadata
+  ################################################################
+
+  @sp.add_test(name="updateContractMetadata - succeeds when called by governor")
+  def test():
+    # GIVEN a Pool contract
+    scenario = sp.test_scenario()
+
+    pool = PoolContract(
+      governorAddress = Addresses.GOVERNOR_ADDRESS,
+    )
+    scenario += pool
+
+    # WHEN the updateContractMetadata is called with a new locator
+    locatorKey = ""
+    newLocator = sp.bytes('0x1234567890')
+    scenario += pool.updateContractMetadata((locatorKey, newLocator)).run(
+      sender = Addresses.GOVERNOR_ADDRESS,
+    )
+
+    # THEN the contract is updated.
+    scenario.verify(pool.data.metadata[locatorKey] == newLocator)
+
+  @sp.add_test(name="updateContractMetadata - fails when not called by governor")
+  def test():
+    # GIVEN a Pool contract
+    scenario = sp.test_scenario()
+
+    pool = PoolContract(
+      governorAddress = Addresses.GOVERNOR_ADDRESS,
+    )
+    scenario += pool
+
+    # WHEN the updateContractMetadata is called by someone who isn't the governor THEN the call fails
+    locatorKey = ""
+    newLocator = sp.bytes('0x1234567890')
+    scenario += pool.updateContractMetadata((locatorKey, newLocator)).run(
+      sender = Addresses.NULL_ADDRESS,
+      valid = False
+    )            
+
+  ################################################################
+  # updateTokenMetadata
+  ################################################################
+
+  @sp.add_test(name="updateTokenMetadata - succeeds when called by governor")
+  def test():
+    # GIVEN a pool contract
+    scenario = sp.test_scenario()
+
+    pool = PoolContract(
+      governorAddress = Addresses.GOVERNOR_ADDRESS,
+    )
+    scenario += pool
+
+    # WHEN the updateTokenMetadata is called with a new data set.
+    newKey = "new"
+    newValue = sp.bytes('0x123456')
+    newMap = sp.map(
+      l = {
+        newKey: newValue
+      },
+      tkey = sp.TString,
+      tvalue = sp.TBytes
+    )
+    newData = (sp.nat(0), newMap)
+
+    scenario += pool.updateTokenMetadata(newData).run(
+      sender = Addresses.GOVERNOR_ADDRESS,
+    )
+
+    # THEN the contract is updated.
+    tokenMetadata = pool.data.token_metadata[0]
+    tokenId = sp.fst(tokenMetadata)
+    tokenMetadataMap = sp.snd(tokenMetadata)
+            
+    scenario.verify(tokenId == sp.nat(0))
+    scenario.verify(tokenMetadataMap[newKey] == newValue)
+
+  @sp.add_test(name="updateTokenMetadata - fails when not called by governor")
+  def test():
+    # GIVEN a Pool contract
+    scenario = sp.test_scenario()
+
+    pool = PoolContract(
+      governorAddress = Addresses.GOVERNOR_ADDRESS,
+    )
+    scenario += pool
+
+    # WHEN the updateTokenMetadata is called by someone who isn't the governor THEN the call fails
+    newMap = sp.map(
+      l = {
+        "new": sp.bytes('0x123456')
+      },
+      tkey = sp.TString,
+      tvalue = sp.TBytes
+    )
+    newData = (sp.nat(0), newMap)
+    scenario += pool.updateTokenMetadata(newData).run(
+      sender = Addresses.NULL_ADDRESS,
+      valid = False
+    )            
 
   ################################################################
   # updateRewardAmount
