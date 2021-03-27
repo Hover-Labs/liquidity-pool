@@ -9,9 +9,11 @@ PRECISION = 1000000000000000000 # 18 decimals
 IDLE = 0
 WAITING_UPDATE_BALANCE = 1
 WAITING_REDEEM = 2
+WAITING_DEPOSIT = 3
 
 Addresses = sp.import_script_from_url("file:./test-helpers/addresses.py")
 
+# TODO(keefertaylor): Metadata
 class PoolContract(Token.FA12):
   def __init__(
     self,
@@ -41,6 +43,8 @@ class PoolContract(Token.FA12):
     # State machine states - exposed for testing.
     savedState_tokensToRedeem = sp.none,
     savedState_redeemer = sp.none,
+    savedState_tokensToDeposit = sp.none,
+    savedState_depositor = sp.none,
   ):
     self.init(
       # Parent class fields
@@ -65,6 +69,8 @@ class PoolContract(Token.FA12):
       state = state,
       savedState_tokensToRedeem = savedState_tokensToRedeem, # Amount of tokens to redeem, populated when state = WAITING_REDEEM
       savedState_redeemer = savedState_redeemer, # Account redeeming tokens, populated when state = WAITING_REDEEM
+      savedState_tokensToDeposit = savedState_tokensToDeposit, # Amount of tokens to deposit, populated when state = WAITING_DEPOSIT
+      savedState_depositor = savedState_depositor, # Account depositing the tokens, populated when state = WAITING_DEPOSIT
     )
 
   ################################################################
@@ -141,24 +147,54 @@ class PoolContract(Token.FA12):
 
   # Deposit a number of tokens and receive LP tokens.
   @sp.entry_point
-  def deposit(self, tokensToSupply):
-    sp.set_type(tokensToSupply, sp.TNat)
+  def deposit(self, tokensToDeposit):
+    sp.set_type(tokensToDeposit, sp.TNat)
+
+    # Validate state
+    sp.verify(self.data.state == IDLE, "bad state")
+
+    # Save state
+    self.data.state = WAITING_DEPOSIT
+    self.data.savedState_tokensToDeposit = sp.some(tokensToDeposit)
+    self.data.savedState_depositor = sp.some(sp.sender)
+
+    # Call token contract to update balance.
+    param = (sp.self_address, sp.self_entry_point(entry_point = 'deposit_callback'))
+    contractHandle = sp.contract(
+      sp.TPair(sp.TAddress, sp.TContract(sp.TNat)),
+      self.data.tokenAddress,
+      "getBalance",      
+    ).open_some()
+    sp.transfer(param, sp.mutez(0), contractHandle)
+
+  # Private callback for redeem.
+  @sp.entry_point
+  def deposit_callback(self, updatedBalance):
+    sp.set_type(updatedBalance, sp.TNat)
+
+    # Validate sender
+    sp.verify(sp.sender == self.data.tokenAddress, "bad sender")
+
+    # Validate state
+    sp.verify(self.data.state == WAITING_DEPOSIT, "bad state")
 
     # Calculate the tokens to issue.
-    newTokens = sp.local('newTokens', tokensToSupply * PRECISION)
+    tokensToDeposit = sp.local('tokensToDeposit', self.data.savedState_tokensToDeposit.open_some())
+    newTokens = sp.local('newTokens', tokensToDeposit.value * PRECISION)
     sp.if self.data.totalSupply != sp.nat(0):
-      newUnderlyingBalance = sp.local('newUnderlyingBalance', self.data.underlyingBalance + tokensToSupply)
-      fractionOfPoolOwnership = sp.local('fractionOfPoolOwnership', (tokensToSupply * PRECISION) / newUnderlyingBalance.value)
+      newUnderlyingBalance = sp.local('newUnderlyingBalance', updatedBalance + tokensToDeposit.value)
+      fractionOfPoolOwnership = sp.local('fractionOfPoolOwnership', (tokensToDeposit.value * PRECISION) / newUnderlyingBalance.value)
       newTokens.value = ((fractionOfPoolOwnership.value * self.data.totalSupply) / (sp.as_nat(PRECISION - fractionOfPoolOwnership.value)))
 
     # Update underlying balance
-    self.data.underlyingBalance += tokensToSupply
+    self.data.underlyingBalance = updatedBalance + tokensToDeposit.value
 
     # Transfer tokens to this contract.
+    depositor = sp.local('depositor', self.data.savedState_depositor.open_some())
     tokenTransferParam = sp.record(
-      from_ = sp.sender,
+      from_ = depositor.value,
       to_ = sp.self_address, 
-      value = tokensToSupply
+      value = tokensToDeposit.value
     )
     transferHandle = sp.contract(
       sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))),
@@ -167,9 +203,9 @@ class PoolContract(Token.FA12):
     ).open_some()
     sp.transfer(tokenTransferParam, sp.mutez(0), transferHandle)
 
-    # Mint tokens to the sender
+    # Mint tokens to the depositor
     tokenMintParam = sp.record(
-      address = sp.sender, 
+      address = depositor.value, 
       value = newTokens.value
     )
     mintHandle = sp.contract(
@@ -178,6 +214,11 @@ class PoolContract(Token.FA12):
       entry_point = 'mint',
     ).open_some()
     sp.transfer(tokenMintParam, sp.mutez(0), mintHandle)
+
+    # Reset state
+    self.data.state = IDLE
+    self.data.savedState_tokensToDeposit = sp.none
+    self.data.savedState_depositor = sp.none
 
   # Redeem a number of LP tokens for the underlying asset.
   @sp.entry_point
@@ -828,6 +869,102 @@ if __name__ == "__main__":
   # deposit
   ################################################################
 
+  @sp.add_test(name="deposit - fails in bad state")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND a pool contract in the WAITING_DEPOSIT state
+    pool = PoolContract(
+      tokenAddress = token.address,
+      state = WAITING_DEPOSIT
+    )
+    scenario += pool
+
+    # AND Alice has tokens
+    aliceTokens = sp.nat(10)
+    scenario += token.mint(
+      sp.record(
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND Alice has given the pool an allowance
+    scenario += token.approve(
+      sp.record(
+        spender = pool.address,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ALICE_ADDRESS
+    )
+
+    # WHEN Alice deposits tokens in the contract.
+    # THEN the call fails
+    scenario += pool.deposit(
+      aliceTokens
+    ).run(
+      sender = Addresses.ALICE_ADDRESS,
+      valid = False
+    )
+
+  @sp.add_test(name="deposit - resets state")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND a pool contract
+    pool = PoolContract(
+      tokenAddress = token.address
+    )
+    scenario += pool
+
+    # AND Alice has tokens
+    aliceTokens = sp.nat(10)
+    scenario += token.mint(
+      sp.record(
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND Alice has given the pool an allowance
+    scenario += token.approve(
+      sp.record(
+        spender = pool.address,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ALICE_ADDRESS
+    )
+
+    # WHEN Alice deposits tokens in the contract.
+    scenario += pool.deposit(
+      aliceTokens
+    ).run(
+      sender = Addresses.ALICE_ADDRESS
+    )
+
+    # THEN the state is reset to idle.
+    scenario.verify(pool.data.state == IDLE)
+    scenario.verify(pool.data.savedState_tokensToDeposit.is_some() == False)
+    scenario.verify(pool.data.savedState_depositor.is_some() == False)
+
   @sp.add_test(name="deposit - can deposit from one account")
   def test():
     scenario = sp.test_scenario()
@@ -1302,6 +1439,196 @@ if __name__ == "__main__":
     scenario.verify(pool.data.balances[Addresses.CHARLIE_ADDRESS].balance == 16666666666666666666)
 
   ################################################################
+  # deposit_callback
+  ################################################################
+
+  @sp.add_test(name="deposit_callback - can finish deposit")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND Alice has tokens
+    aliceTokens = sp.nat(10)
+    scenario += token.mint(
+      sp.record(
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND a pool contract in the WAITING_DEPOSIT state
+    pool = PoolContract(
+      state = WAITING_DEPOSIT,
+      savedState_depositor = sp.some(Addresses.ALICE_ADDRESS),
+      savedState_tokensToDeposit = sp.some(aliceTokens),
+
+      tokenAddress = token.address
+    )
+    scenario += pool
+    
+    # AND Alice has given the pool an allowance
+    scenario += token.approve(
+      sp.record(
+        spender = pool.address,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ALICE_ADDRESS
+    )
+
+    # AND the pool has tokens
+    poolTokens = PRECISION * 200
+    scenario += token.mint(
+      sp.record(
+        address = pool.address,
+        value = poolTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # WHEN deposit_callback is run
+    scenario += pool.deposit_callback(
+      poolTokens
+    ).run(
+      sender = token.address
+    )
+
+    # THEN the call succeeds.
+    # NOTE: The exact end state is covered by `deposit` tests - we just want to prove that deposit_callback works
+    # under the given conditions so we can vary state and sender in other tests to prove it fails.
+    scenario.verify(pool.data.state == IDLE)
+
+  @sp.add_test(name="deposit_callback - fails in bad state")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND Alice has tokens
+    aliceTokens = sp.nat(10)
+    scenario += token.mint(
+      sp.record(
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND a pool contract in the IDLE state
+    pool = PoolContract(
+      state = IDLE,
+      savedState_depositor = sp.none,
+      savedState_tokensToDeposit = sp.none,
+
+      tokenAddress = token.address
+    )
+    scenario += pool
+    
+    # AND Alice has given the pool an allowance
+    scenario += token.approve(
+      sp.record(
+        spender = pool.address,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ALICE_ADDRESS
+    )
+
+    # AND the pool has tokens
+    poolTokens = PRECISION * 200
+    scenario += token.mint(
+      sp.record(
+        address = pool.address,
+        value = poolTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # WHEN deposit_callback is run
+    # THEN the call fails
+    scenario += pool.deposit_callback(
+      poolTokens
+    ).run(
+      sender = token.address,
+      valid = False
+    )
+
+  @sp.add_test(name="deposit_callback - fails with bad sender")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND Alice has tokens
+    aliceTokens = sp.nat(10)
+    scenario += token.mint(
+      sp.record(
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND a pool contract in the WAITING_DEPOSIT state
+    pool = PoolContract(
+      state = WAITING_DEPOSIT,
+      savedState_depositor = sp.some(Addresses.ALICE_ADDRESS),
+      savedState_tokensToDeposit = sp.some(aliceTokens),
+
+      tokenAddress = token.address
+    )
+    scenario += pool
+    
+    # AND Alice has given the pool an allowance
+    scenario += token.approve(
+      sp.record(
+        spender = pool.address,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ALICE_ADDRESS
+    )
+
+    # AND the pool has tokens
+    poolTokens = PRECISION * 200
+    scenario += token.mint(
+      sp.record(
+        address = pool.address,
+        value = poolTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # WHEN deposit_callback is called by someone other than the token contract
+    # THEN the call fails.
+    scenario += pool.deposit_callback(
+      poolTokens
+    ).run(
+      sender = Addresses.NULL_ADDRESS,
+      valid = False
+    )
+
+  ################################################################
   # redeem
   ################################################################
 
@@ -1333,21 +1660,14 @@ if __name__ == "__main__":
       sender = Addresses.ADMIN_ADDRESS
     )
 
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # WHEN Alice withdraws from the contract
@@ -2270,7 +2590,6 @@ if __name__ == "__main__":
     )
     scenario += token
 
-
     # AND Alice has tokens
     aliceTokens = sp.nat(10)
     scenario += token.mint(
@@ -2292,21 +2611,14 @@ if __name__ == "__main__":
     )
     scenario += pool
     
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # AND the pool has tokens
@@ -2342,7 +2654,6 @@ if __name__ == "__main__":
     )
     scenario += token
 
-
     # AND Alice has tokens
     aliceTokens = sp.nat(10)
     scenario += token.mint(
@@ -2364,21 +2675,14 @@ if __name__ == "__main__":
     )
     scenario += pool
     
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # AND the pool has tokens
@@ -2411,7 +2715,6 @@ if __name__ == "__main__":
     )
     scenario += token
 
-
     # AND Alice has tokens
     aliceTokens = sp.nat(10)
     scenario += token.mint(
@@ -2433,21 +2736,14 @@ if __name__ == "__main__":
     )
     scenario += pool
     
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # AND the pool has tokens
