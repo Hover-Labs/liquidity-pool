@@ -1342,6 +1342,64 @@ if __name__ == "__main__":
     scenario.verify(pool.data.balances[Addresses.CHARLIE_ADDRESS].balance == 16666666666666666666)
 
   ################################################################
+  # deposit_callback
+  ################################################################
+
+  @sp.add_test(name="deposit_callback - can finish deposit")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND Alice has tokens
+    aliceTokens = sp.nat(10)
+    scenario += token.mint(
+      sp.record(
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND a pool contract in the WAITING_DEPOSIT state
+    pool = PoolContract(
+      state = WAITING_DEPOSIT,
+      savedState_depositor = sp.some(Addresses.ALICE_ADDRESS),
+      savedState_tokensToDeposit = sp.some(aliceTokens),
+
+      tokenAddress = token.address
+    )
+    scenario += pool
+    
+    # AND the pool has tokens
+    poolTokens = PRECISION * 200
+    scenario += token.mint(
+      sp.record(
+        address = pool.address,
+        value = poolTokens
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # WHEN deposit_callback is run
+    scenario += pool.deposit_callback(
+      poolTokens
+    ).run(
+      sender = token.address
+    )
+
+    # THEN the call succeeds.
+    # NOTE: The exact end state is covered by `redeem` tests - we just want to prove that redeem_callback works
+    # under the given conditions so we can vary state and sender in other tests to prove it fails.
+    scenario.verify(pool.data.state == IDLE)
+
+  ################################################################
   # redeem
   ################################################################
 
