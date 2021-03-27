@@ -237,6 +237,10 @@ class PoolContract(Token.FA12):
     # Update balance.
     self.data.underlyingBalance = balance
 
+  ################################################################
+  # Governance
+  ################################################################
+
   # Update the governor address.
   @sp.entry_point
   def updateGovernor(self, newGovernorAddress):
@@ -245,9 +249,16 @@ class PoolContract(Token.FA12):
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
     self.data.governorAddress = newGovernorAddress
 
+  # Update the reward amount.
+  @sp.entry_point
+  def updateRewardAmount(self, newRewardAmount):
+    sp.set_type(newRewardAmount, sp.TNat)
+
+    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    self.data.rewardAmount = newRewardAmount
+
   # TODO(keefertaylor): Governance to update dexter.
   # TODO(keefertaylor): Governance to update oven registry.
-  # TODO(keefertaylor): Governance to update reward amount.
 
 # Only run tests if this file is main.
 if __name__ == "__main__":
@@ -256,6 +267,44 @@ if __name__ == "__main__":
   FakeDexter = sp.import_script_from_url("file:./test-helpers/fake-dexter-pool.py")
   FakeOven = sp.import_script_from_url("file:./test-helpers/fake-oven.py")
   FakeOvenRegistry = sp.import_script_from_url("file:./test-helpers/fake-oven-registry.py")
+
+  ################################################################
+  # updateRewardAmount
+  ################################################################
+
+  @sp.add_test(name="updateRewardAmount - fails if sender is not governor")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateRewardAmount is called by someone other than the governor
+    # THEN the call will fail
+    notGovernor = Addresses.NULL_ADDRESS
+    newRewardAmount = sp.nat(123)
+    scenario += pool.updateRewardAmount(newRewardAmount).run(
+      sender = notGovernor,
+      valid = False
+    )
+
+  @sp.add_test(name="updateRewardAmount - can update reward amount")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateRewardAmount is called
+    newRewardAmount = sp.nat(123)
+    scenario += pool.updateRewardAmount(newRewardAmount).run(
+      sender = Addresses.GOVERNOR_ADDRESS,
+    )    
+
+    # THEN the reward amount is updated.
+    scenario.verify(pool.data.rewardAmount == newRewardAmount)
 
   ################################################################
   # updateGovernor

@@ -1,4 +1,4 @@
-parameter (or (or (or (or (pair %approve (address %spender) (nat %value)) (pair %burn (address %address) (nat %value))) (or (unit %default) (nat %deposit))) (or (or (pair %getAdministrator unit (contract address)) (pair %getAllowance (pair (address %owner) (address %spender)) (contract nat))) (or (pair %getBalance address (contract nat)) (pair %getTotalSupply unit (contract nat))))) (or (or (or (address %liquidate) (pair %mint (address %address) (nat %value))) (or (nat %redeem) (address %setAdministrator))) (or (or (bool %setPause) (pair %transfer (address %from) (pair (address %to) (nat %value)))) (or (unit %updateBalance) (or (nat %updateBalance_callback) (address %updateGovernor))))));
+parameter (or (or (or (or (pair %approve (address %spender) (nat %value)) (pair %burn (address %address) (nat %value))) (or (unit %default) (nat %deposit))) (or (or (pair %getAdministrator unit (contract address)) (pair %getAllowance (pair (address %owner) (address %spender)) (contract nat))) (or (pair %getBalance address (contract nat)) (or (pair %getTotalSupply unit (contract nat)) (address %liquidate))))) (or (or (or (pair %mint (address %address) (nat %value)) (nat %redeem)) (or (address %setAdministrator) (bool %setPause))) (or (or (pair %transfer (address %from) (pair (address %to) (nat %value))) (unit %updateBalance)) (or (nat %updateBalance_callback) (or (address %updateGovernor) (nat %updateRewardAmount))))));
 storage   (pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)))));
 code
   {
@@ -447,7 +447,7 @@ code
                     CAR;        # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%getAdministrator : @storage
                     CAR;        # pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance))) : @parameter%getAdministrator : @storage
                     CAR;        # address : @parameter%getAdministrator : @storage
-                    # sp.transfer(__s181.value, sp.tez(0), sp.snd(params)) # address : @parameter%getAdministrator : @storage
+                    # sp.transfer(__s189.value, sp.tez(0), sp.snd(params)) # address : @parameter%getAdministrator : @storage
                     NIL operation; # list operation : address : @parameter%getAdministrator : @storage
                     DIG 2;      # @parameter%getAdministrator : list operation : address : @storage
                     CDR;        # contract address : list operation : address : @storage
@@ -494,7 +494,7 @@ code
                         PUSH int 104; # int : @parameter%getAllowance : @storage
                         FAILWITH;   # FAILED
                       }; # @some : @parameter%getAllowance : @storage
-                    # sp.transfer(__s182.value, sp.tez(0), sp.snd(params)) # @some : @parameter%getAllowance : @storage
+                    # sp.transfer(__s190.value, sp.tez(0), sp.snd(params)) # @some : @parameter%getAllowance : @storage
                     NIL operation; # list operation : @some : @parameter%getAllowance : @storage
                     DIG 2;      # @parameter%getAllowance : list operation : @some : @storage
                     CDR;        # contract nat : list operation : @some : @storage
@@ -529,7 +529,7 @@ code
                         FAILWITH;   # FAILED
                       }; # @some : @parameter%getBalance : @storage
                     CDR;        # nat : @parameter%getBalance : @storage
-                    # sp.transfer(__s183.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getBalance : @storage
+                    # sp.transfer(__s191.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getBalance : @storage
                     NIL operation; # list operation : nat : @parameter%getBalance : @storage
                     DIG 2;      # @parameter%getBalance : list operation : nat : @storage
                     CDR;        # contract nat : list operation : nat : @storage
@@ -539,20 +539,79 @@ code
                     CONS;       # list operation : @storage
                   }
                   {
-                    SWAP;       # @storage : @parameter%getTotalSupply
-                    # == getTotalSupply ==
-                    # sp.result(self.data.totalSupply) # @storage : @parameter%getTotalSupply
-                    DUP;        # @storage : @storage : @parameter%getTotalSupply
-                    DUG 2;      # @storage : @parameter%getTotalSupply : @storage
-                    GET 7;      # nat : @parameter%getTotalSupply : @storage
-                    # sp.transfer(__s184.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getTotalSupply : @storage
-                    NIL operation; # list operation : nat : @parameter%getTotalSupply : @storage
-                    DIG 2;      # @parameter%getTotalSupply : list operation : nat : @storage
-                    CDR;        # contract nat : list operation : nat : @storage
-                    PUSH mutez 0; # mutez : contract nat : list operation : nat : @storage
-                    DIG 3;      # nat : mutez : contract nat : list operation : @storage
-                    TRANSFER_TOKENS; # operation : list operation : @storage
-                    CONS;       # list operation : @storage
+                    IF_LEFT
+                      {
+                        SWAP;       # @storage : @parameter%getTotalSupply
+                        # == getTotalSupply ==
+                        # sp.result(self.data.totalSupply) # @storage : @parameter%getTotalSupply
+                        DUP;        # @storage : @storage : @parameter%getTotalSupply
+                        DUG 2;      # @storage : @parameter%getTotalSupply : @storage
+                        GET 7;      # nat : @parameter%getTotalSupply : @storage
+                        # sp.transfer(__s192.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getTotalSupply : @storage
+                        NIL operation; # list operation : nat : @parameter%getTotalSupply : @storage
+                        DIG 2;      # @parameter%getTotalSupply : list operation : nat : @storage
+                        CDR;        # contract nat : list operation : nat : @storage
+                        PUSH mutez 0; # mutez : contract nat : list operation : nat : @storage
+                        DIG 3;      # nat : mutez : contract nat : list operation : @storage
+                        TRANSFER_TOKENS; # operation : list operation : @storage
+                        CONS;       # list operation : @storage
+                      }
+                      {
+                        # == liquidate ==
+                        # sp.transfer(params, sp.tez(0), sp.contract(sp.TAddress, self.data.ovenRegistryAddress, entry_point='isOven').open_some()) # @parameter%liquidate : @storage
+                        NIL operation; # list operation : @parameter%liquidate : @storage
+                        DUP 3;      # @storage : list operation : @parameter%liquidate : @storage
+                        CAR;        # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : list operation : @parameter%liquidate : @storage
+                        CDR;        # pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)) : list operation : @parameter%liquidate : @storage
+                        CDR;        # pair (address %governorAddress) (address %ovenRegistryAddress) : list operation : @parameter%liquidate : @storage
+                        CDR;        # address : list operation : @parameter%liquidate : @storage
+                        CONTRACT %isOven address; # option (contract address) : list operation : @parameter%liquidate : @storage
+                        IF_SOME
+                          {}
+                          {
+                            PUSH int 99; # int : list operation : @parameter%liquidate : @storage
+                            FAILWITH;   # FAILED
+                          }; # @some : list operation : @parameter%liquidate : @storage
+                        PUSH mutez 0; # mutez : @some : list operation : @parameter%liquidate : @storage
+                        DUP 4;      # @parameter%liquidate : mutez : @some : list operation : @parameter%liquidate : @storage
+                        TRANSFER_TOKENS; # operation : list operation : @parameter%liquidate : @storage
+                        CONS;       # list operation : @parameter%liquidate : @storage
+                        # sp.transfer(sp.record(from_ = sp.self_address, to_ = sp.sender, value = self.data.rewardAmount), sp.tez(0), sp.contract(sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))), self.data.tokenAddress, entry_point='transfer').open_some()) # list operation : @parameter%liquidate : @storage
+                        DUP 3;      # @storage : list operation : @parameter%liquidate : @storage
+                        GET 5;      # address : list operation : @parameter%liquidate : @storage
+                        CONTRACT %transfer (pair (address %from) (pair (address %to) (nat %value))); # option (contract (pair (address %from) (pair (address %to) (nat %value)))) : list operation : @parameter%liquidate : @storage
+                        IF_SOME
+                          {}
+                          {
+                            PUSH int 112; # int : list operation : @parameter%liquidate : @storage
+                            FAILWITH;   # FAILED
+                          }; # @some : list operation : @parameter%liquidate : @storage
+                        PUSH mutez 0; # mutez : @some : list operation : @parameter%liquidate : @storage
+                        DUP 5;      # @storage : mutez : @some : list operation : @parameter%liquidate : @storage
+                        CDR;        # pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : mutez : @some : list operation : @parameter%liquidate : @storage
+                        CAR;        # pair (bool %paused) (pair (nat %rewardAmount) (int %state)) : mutez : @some : list operation : @parameter%liquidate : @storage
+                        CDR;        # pair (nat %rewardAmount) (int %state) : mutez : @some : list operation : @parameter%liquidate : @storage
+                        CAR;        # nat : mutez : @some : list operation : @parameter%liquidate : @storage
+                        SENDER;     # address : nat : mutez : @some : list operation : @parameter%liquidate : @storage
+                        PAIR %to %value; # pair (address %to) (nat %value) : mutez : @some : list operation : @parameter%liquidate : @storage
+                        SELF_ADDRESS; # address : pair (address %to) (nat %value) : mutez : @some : list operation : @parameter%liquidate : @storage
+                        PAIR %from; # pair (address %from) (pair (address %to) (nat %value)) : mutez : @some : list operation : @parameter%liquidate : @storage
+                        TRANSFER_TOKENS; # operation : list operation : @parameter%liquidate : @storage
+                        CONS;       # list operation : @parameter%liquidate : @storage
+                        SWAP;       # @parameter%liquidate : list operation : @storage
+                        # sp.send(params, sp.tez(0)) # @parameter%liquidate : list operation : @storage
+                        CONTRACT %liquidate unit; # option (contract unit) : list operation : @storage
+                        IF_SOME
+                          {}
+                          {
+                            PUSH int 120; # int : list operation : @storage
+                            FAILWITH;   # FAILED
+                          }; # @some : list operation : @storage
+                        PUSH mutez 0; # mutez : @some : list operation : @storage
+                        UNIT;       # unit : mutez : @some : list operation : @storage
+                        TRANSFER_TOKENS; # operation : list operation : @storage
+                        CONS;       # list operation : @storage
+                      }; # list operation : @storage
                   }; # list operation : @storage
               }; # list operation : @storage
           }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
@@ -563,62 +622,6 @@ code
             IF_LEFT
               {
                 IF_LEFT
-                  {
-                    # == liquidate ==
-                    # sp.transfer(params, sp.tez(0), sp.contract(sp.TAddress, self.data.ovenRegistryAddress, entry_point='isOven').open_some()) # @parameter%liquidate : @storage
-                    NIL operation; # list operation : @parameter%liquidate : @storage
-                    DUP 3;      # @storage : list operation : @parameter%liquidate : @storage
-                    CAR;        # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : list operation : @parameter%liquidate : @storage
-                    CDR;        # pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)) : list operation : @parameter%liquidate : @storage
-                    CDR;        # pair (address %governorAddress) (address %ovenRegistryAddress) : list operation : @parameter%liquidate : @storage
-                    CDR;        # address : list operation : @parameter%liquidate : @storage
-                    CONTRACT %isOven address; # option (contract address) : list operation : @parameter%liquidate : @storage
-                    IF_SOME
-                      {}
-                      {
-                        PUSH int 99; # int : list operation : @parameter%liquidate : @storage
-                        FAILWITH;   # FAILED
-                      }; # @some : list operation : @parameter%liquidate : @storage
-                    PUSH mutez 0; # mutez : @some : list operation : @parameter%liquidate : @storage
-                    DUP 4;      # @parameter%liquidate : mutez : @some : list operation : @parameter%liquidate : @storage
-                    TRANSFER_TOKENS; # operation : list operation : @parameter%liquidate : @storage
-                    CONS;       # list operation : @parameter%liquidate : @storage
-                    # sp.transfer(sp.record(from_ = sp.self_address, to_ = sp.sender, value = self.data.rewardAmount), sp.tez(0), sp.contract(sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))), self.data.tokenAddress, entry_point='transfer').open_some()) # list operation : @parameter%liquidate : @storage
-                    DUP 3;      # @storage : list operation : @parameter%liquidate : @storage
-                    GET 5;      # address : list operation : @parameter%liquidate : @storage
-                    CONTRACT %transfer (pair (address %from) (pair (address %to) (nat %value))); # option (contract (pair (address %from) (pair (address %to) (nat %value)))) : list operation : @parameter%liquidate : @storage
-                    IF_SOME
-                      {}
-                      {
-                        PUSH int 112; # int : list operation : @parameter%liquidate : @storage
-                        FAILWITH;   # FAILED
-                      }; # @some : list operation : @parameter%liquidate : @storage
-                    PUSH mutez 0; # mutez : @some : list operation : @parameter%liquidate : @storage
-                    DUP 5;      # @storage : mutez : @some : list operation : @parameter%liquidate : @storage
-                    CDR;        # pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : mutez : @some : list operation : @parameter%liquidate : @storage
-                    CAR;        # pair (bool %paused) (pair (nat %rewardAmount) (int %state)) : mutez : @some : list operation : @parameter%liquidate : @storage
-                    CDR;        # pair (nat %rewardAmount) (int %state) : mutez : @some : list operation : @parameter%liquidate : @storage
-                    CAR;        # nat : mutez : @some : list operation : @parameter%liquidate : @storage
-                    SENDER;     # address : nat : mutez : @some : list operation : @parameter%liquidate : @storage
-                    PAIR %to %value; # pair (address %to) (nat %value) : mutez : @some : list operation : @parameter%liquidate : @storage
-                    SELF_ADDRESS; # address : pair (address %to) (nat %value) : mutez : @some : list operation : @parameter%liquidate : @storage
-                    PAIR %from; # pair (address %from) (pair (address %to) (nat %value)) : mutez : @some : list operation : @parameter%liquidate : @storage
-                    TRANSFER_TOKENS; # operation : list operation : @parameter%liquidate : @storage
-                    CONS;       # list operation : @parameter%liquidate : @storage
-                    SWAP;       # @parameter%liquidate : list operation : @storage
-                    # sp.send(params, sp.tez(0)) # @parameter%liquidate : list operation : @storage
-                    CONTRACT %liquidate unit; # option (contract unit) : list operation : @storage
-                    IF_SOME
-                      {}
-                      {
-                        PUSH int 120; # int : list operation : @storage
-                        FAILWITH;   # FAILED
-                      }; # @some : list operation : @storage
-                    PUSH mutez 0; # mutez : @some : list operation : @storage
-                    UNIT;       # unit : mutez : @some : list operation : @storage
-                    TRANSFER_TOKENS; # operation : list operation : @storage
-                    CONS;       # list operation : @storage
-                  }
                   {
                     SWAP;       # @storage : @parameter%mint
                     # == mint ==
@@ -727,10 +730,7 @@ code
                     SWAP;       # pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat))
                     PAIR;       # pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
                     NIL operation; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
-                  }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
-              }
-              {
-                IF_LEFT
+                  }
                   {
                     SWAP;       # @storage : @parameter%redeem
                     # == redeem ==
@@ -828,7 +828,10 @@ code
                     PAIR %from; # pair (address %from) (pair (address %to) (nat %value)) : mutez : @some : list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat @some)))
                     TRANSFER_TOKENS; # operation : list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat @some)))
                     CONS;       # list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat @some)))
-                  }
+                  }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
+              }
+              {
+                IF_LEFT
                   {
                     SWAP;       # @storage : @parameter%setAdministrator
                     # == setAdministrator ==
@@ -856,14 +859,7 @@ code
                     PAIR;       # pair @parameter%setAdministrator (big_map address (pair (map %approvals address nat) (nat %balance))) : pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)))
                     PAIR;       # pair (pair @parameter%setAdministrator (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)))
                     PAIR;       # pair (pair (pair @parameter%setAdministrator (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
-                    NIL operation; # list operation : pair (pair (pair @parameter%setAdministrator (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
-                  }; # list operation : pair (pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
-              }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
-          }
-          {
-            IF_LEFT
-              {
-                IF_LEFT
+                  }
                   {
                     SWAP;       # @storage : @parameter%setPause
                     # == setPause ==
@@ -893,7 +889,14 @@ code
                     PAIR;       # pair (pair @parameter%setPause (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
                     SWAP;       # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair @parameter%setPause (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)))
                     PAIR;       # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair @parameter%setPause (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
-                  }
+                  }; # pair (pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
+                NIL operation; # list operation : pair (pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
+              }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair (nat %rewardAmount) (int %state))) (pair address (pair nat nat)))
+          }
+          {
+            IF_LEFT
+              {
+                IF_LEFT
                   {
                     SWAP;       # @storage : @parameter%transfer
                     # == transfer ==
@@ -1204,11 +1207,8 @@ code
                       {
                         DROP;       # pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
                       }; # pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
-                  }; # pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
-                NIL operation; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
-              }
-              {
-                IF_LEFT
+                    NIL operation; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
+                  }
                   {
                     DROP;       # @storage
                     # == updateBalance ==
@@ -1260,68 +1260,71 @@ code
                     PAIR;       # pair address (contract nat) : mutez : @some : list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair nat int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
                     TRANSFER_TOKENS; # operation : list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair nat int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
                     CONS;       # list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair nat int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
+                  }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair nat int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
+              }
+              {
+                IF_LEFT
+                  {
+                    SWAP;       # @storage : @parameter%updateBalance_callback
+                    # == updateBalance_callback ==
+                    # sp.verify(sp.sender == self.data.tokenAddress, message = 'bad sender') # @storage : @parameter%updateBalance_callback
+                    DUP;        # @storage : @storage : @parameter%updateBalance_callback
+                    DUG 2;      # @storage : @parameter%updateBalance_callback : @storage
+                    GET 5;      # address : @parameter%updateBalance_callback : @storage
+                    SENDER;     # address : address : @parameter%updateBalance_callback : @storage
+                    COMPARE;    # int : @parameter%updateBalance_callback : @storage
+                    EQ;         # bool : @parameter%updateBalance_callback : @storage
+                    IF
+                      {}
+                      {
+                        PUSH string "bad sender"; # string : @parameter%updateBalance_callback : @storage
+                        FAILWITH;   # FAILED
+                      }; # @parameter%updateBalance_callback : @storage
+                    # sp.verify(self.data.state == 1, message = 'bad state') # @parameter%updateBalance_callback : @storage
+                    PUSH int 1; # int : @parameter%updateBalance_callback : @storage
+                    DUP 3;      # @storage : int : @parameter%updateBalance_callback : @storage
+                    CDR;        # pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : int : @parameter%updateBalance_callback : @storage
+                    CAR;        # pair (bool %paused) (pair (nat %rewardAmount) (int %state)) : int : @parameter%updateBalance_callback : @storage
+                    CDR;        # pair (nat %rewardAmount) (int %state) : int : @parameter%updateBalance_callback : @storage
+                    CDR;        # int : int : @parameter%updateBalance_callback : @storage
+                    COMPARE;    # int : @parameter%updateBalance_callback : @storage
+                    EQ;         # bool : @parameter%updateBalance_callback : @storage
+                    IF
+                      {}
+                      {
+                        PUSH string "bad state"; # string : @parameter%updateBalance_callback : @storage
+                        FAILWITH;   # FAILED
+                      }; # @parameter%updateBalance_callback : @storage
+                    SWAP;       # @storage : @parameter%updateBalance_callback
+                    # self.data.state = 0 # @storage : @parameter%updateBalance_callback
+                    UNPAIR;     # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : @parameter%updateBalance_callback
+                    SWAP;       # pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    UNPAIR;     # pair (bool %paused) (pair (nat %rewardAmount) (int %state)) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    UNPAIR;     # bool : pair (nat %rewardAmount) (int %state) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    SWAP;       # pair (nat %rewardAmount) (int %state) : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    CAR;        # nat : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    PUSH int 0; # int : nat : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    SWAP;       # nat : int : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    PAIR;       # pair nat int : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    SWAP;       # bool : pair nat int : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    PAIR;       # pair bool (pair nat int) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    SWAP;       # pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    # self.data.underlyingBalance = params # pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    UNPAIR;     # address : pair (nat %totalSupply) (nat %underlyingBalance) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    SWAP;       # pair (nat %totalSupply) (nat %underlyingBalance) : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    CAR;        # nat : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
+                    DIG 4;      # @parameter%updateBalance_callback : nat : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                    SWAP;       # nat : @parameter%updateBalance_callback : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                    PAIR;       # pair nat @parameter%updateBalance_callback : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                    SWAP;       # address : pair nat @parameter%updateBalance_callback : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                    PAIR;       # pair address (pair nat @parameter%updateBalance_callback) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                    SWAP;       # pair bool (pair nat int) : pair address (pair nat @parameter%updateBalance_callback) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                    PAIR;       # pair (pair bool (pair nat int)) (pair address (pair nat @parameter%updateBalance_callback)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                    SWAP;       # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair bool (pair nat int)) (pair address (pair nat @parameter%updateBalance_callback))
+                    PAIR;       # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair nat int)) (pair address (pair nat @parameter%updateBalance_callback)))
                   }
                   {
                     IF_LEFT
-                      {
-                        SWAP;       # @storage : @parameter%updateBalance_callback
-                        # == updateBalance_callback ==
-                        # sp.verify(sp.sender == self.data.tokenAddress, message = 'bad sender') # @storage : @parameter%updateBalance_callback
-                        DUP;        # @storage : @storage : @parameter%updateBalance_callback
-                        DUG 2;      # @storage : @parameter%updateBalance_callback : @storage
-                        GET 5;      # address : @parameter%updateBalance_callback : @storage
-                        SENDER;     # address : address : @parameter%updateBalance_callback : @storage
-                        COMPARE;    # int : @parameter%updateBalance_callback : @storage
-                        EQ;         # bool : @parameter%updateBalance_callback : @storage
-                        IF
-                          {}
-                          {
-                            PUSH string "bad sender"; # string : @parameter%updateBalance_callback : @storage
-                            FAILWITH;   # FAILED
-                          }; # @parameter%updateBalance_callback : @storage
-                        # sp.verify(self.data.state == 1, message = 'bad state') # @parameter%updateBalance_callback : @storage
-                        PUSH int 1; # int : @parameter%updateBalance_callback : @storage
-                        DUP 3;      # @storage : int : @parameter%updateBalance_callback : @storage
-                        CDR;        # pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : int : @parameter%updateBalance_callback : @storage
-                        CAR;        # pair (bool %paused) (pair (nat %rewardAmount) (int %state)) : int : @parameter%updateBalance_callback : @storage
-                        CDR;        # pair (nat %rewardAmount) (int %state) : int : @parameter%updateBalance_callback : @storage
-                        CDR;        # int : int : @parameter%updateBalance_callback : @storage
-                        COMPARE;    # int : @parameter%updateBalance_callback : @storage
-                        EQ;         # bool : @parameter%updateBalance_callback : @storage
-                        IF
-                          {}
-                          {
-                            PUSH string "bad state"; # string : @parameter%updateBalance_callback : @storage
-                            FAILWITH;   # FAILED
-                          }; # @parameter%updateBalance_callback : @storage
-                        SWAP;       # @storage : @parameter%updateBalance_callback
-                        # self.data.state = 0 # @storage : @parameter%updateBalance_callback
-                        UNPAIR;     # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : @parameter%updateBalance_callback
-                        SWAP;       # pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        UNPAIR;     # pair (bool %paused) (pair (nat %rewardAmount) (int %state)) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        UNPAIR;     # bool : pair (nat %rewardAmount) (int %state) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        SWAP;       # pair (nat %rewardAmount) (int %state) : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        CAR;        # nat : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        PUSH int 0; # int : nat : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        SWAP;       # nat : int : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        PAIR;       # pair nat int : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        SWAP;       # bool : pair nat int : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        PAIR;       # pair bool (pair nat int) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        SWAP;       # pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        # self.data.underlyingBalance = params # pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        UNPAIR;     # address : pair (nat %totalSupply) (nat %underlyingBalance) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        SWAP;       # pair (nat %totalSupply) (nat %underlyingBalance) : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        CAR;        # nat : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateBalance_callback
-                        DIG 4;      # @parameter%updateBalance_callback : nat : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
-                        SWAP;       # nat : @parameter%updateBalance_callback : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
-                        PAIR;       # pair nat @parameter%updateBalance_callback : address : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
-                        SWAP;       # address : pair nat @parameter%updateBalance_callback : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
-                        PAIR;       # pair address (pair nat @parameter%updateBalance_callback) : pair bool (pair nat int) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
-                        SWAP;       # pair bool (pair nat int) : pair address (pair nat @parameter%updateBalance_callback) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
-                        PAIR;       # pair (pair bool (pair nat int)) (pair address (pair nat @parameter%updateBalance_callback)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
-                        SWAP;       # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair bool (pair nat int)) (pair address (pair nat @parameter%updateBalance_callback))
-                        PAIR;       # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair nat int)) (pair address (pair nat @parameter%updateBalance_callback)))
-                      }
                       {
                         SWAP;       # @storage : @parameter%updateGovernor
                         # == updateGovernor ==
@@ -1356,9 +1359,44 @@ code
                         SWAP;       # pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance))) : pair address (pair @parameter%updateGovernor address) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)))
                         PAIR;       # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair @parameter%updateGovernor address)) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)))
                         PAIR;       # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair @parameter%updateGovernor address))) (pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
-                      }; # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
-                    NIL operation; # list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
-                  }; # list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
+                      }
+                      {
+                        SWAP;       # @storage : @parameter%updateRewardAmount
+                        # == updateRewardAmount ==
+                        # sp.verify(sp.sender == self.data.governorAddress, message = 'not governor') # @storage : @parameter%updateRewardAmount
+                        DUP;        # @storage : @storage : @parameter%updateRewardAmount
+                        DUG 2;      # @storage : @parameter%updateRewardAmount : @storage
+                        CAR;        # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateRewardAmount : @storage
+                        CDR;        # pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)) : @parameter%updateRewardAmount : @storage
+                        CDR;        # pair (address %governorAddress) (address %ovenRegistryAddress) : @parameter%updateRewardAmount : @storage
+                        CAR;        # address : @parameter%updateRewardAmount : @storage
+                        SENDER;     # address : address : @parameter%updateRewardAmount : @storage
+                        COMPARE;    # int : @parameter%updateRewardAmount : @storage
+                        EQ;         # bool : @parameter%updateRewardAmount : @storage
+                        IF
+                          {}
+                          {
+                            PUSH string "not governor"; # string : @parameter%updateRewardAmount : @storage
+                            FAILWITH;   # FAILED
+                          }; # @parameter%updateRewardAmount : @storage
+                        SWAP;       # @storage : @parameter%updateRewardAmount
+                        # self.data.rewardAmount = params # @storage : @parameter%updateRewardAmount
+                        UNPAIR;     # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : @parameter%updateRewardAmount
+                        SWAP;       # pair (pair (bool %paused) (pair (nat %rewardAmount) (int %state))) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateRewardAmount
+                        UNPAIR;     # pair (bool %paused) (pair (nat %rewardAmount) (int %state)) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateRewardAmount
+                        UNPAIR;     # bool : pair (nat %rewardAmount) (int %state) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateRewardAmount
+                        SWAP;       # pair (nat %rewardAmount) (int %state) : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateRewardAmount
+                        CDR;        # int : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : @parameter%updateRewardAmount
+                        DIG 4;      # @parameter%updateRewardAmount : int : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                        PAIR;       # pair @parameter%updateRewardAmount int : bool : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                        SWAP;       # bool : pair @parameter%updateRewardAmount int : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                        PAIR;       # pair bool (pair @parameter%updateRewardAmount int) : pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                        PAIR;       # pair (pair bool (pair @parameter%updateRewardAmount int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))) : pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))
+                        SWAP;       # pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress))) : pair (pair bool (pair @parameter%updateRewardAmount int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance)))
+                        PAIR;       # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair (address %dexterAddress) (pair (address %governorAddress) (address %ovenRegistryAddress)))) (pair (pair bool (pair @parameter%updateRewardAmount int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
+                      }; # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair (address %tokenAddress) (pair (nat %totalSupply) (nat %underlyingBalance))))
+                  }; # pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
+                NIL operation; # list operation : pair (pair (pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance)))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
               }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
           }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
       }; # list operation : pair (pair (pair address (big_map address (pair (map address nat) nat))) (pair address (pair address address))) (pair (pair bool (pair nat int)) (pair address (pair nat nat)))
