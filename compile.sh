@@ -3,7 +3,7 @@
 set -e -o pipefail
 
 echo "----------------------------------------"
-echo "Compiling LP Provider Contracts"
+echo "Compiling Liquidation Pool Contracts"
 echo "----------------------------------------"
 
 # Expected location of SmartPy CLI.

@@ -24,6 +24,12 @@ class PoolContract(Token.FA12):
 
     # The address of the Dexter contract.
     dexterAddress = Addresses.DEXTER_ADDRESS,
+    
+    # The address of the Oven Registry contract.
+    ovenRegistryAddress = Addresses.OVEN_REGISTRY_ADDRESS,
+
+    # How much kUSD to reward a liquidator with.
+    rewardAmount = PRECISION, # 1 kUSD
 
     # The initial state of the state machine.
     state = IDLE,
@@ -35,16 +41,22 @@ class PoolContract(Token.FA12):
       balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
       totalSupply = 0,
 
-      # Core data
-      tokenAddress = tokenAddress,
+      # Addresses.
       dexterAddress = dexterAddress,
+      ovenRegistryAddress = ovenRegistryAddress,
+      tokenAddress = tokenAddress,
 
-      # Internal state
+      # Configuration paramaters
+      rewardAmount = rewardAmount,
+
+      # Internal State
       underlyingBalance = sp.nat(0),
       
       # State machinge
       state = state,
     )
+
+  # TODO(keefertaylor): For maximum safety, ensure not-state machine functions are always idle?
 
   # Accept XTZ and immediately swap them for kUSD on Dexter.
   @sp.entry_point
@@ -75,6 +87,40 @@ class PoolContract(Token.FA12):
       "updateBalance"
     ).open_some()
     sp.transfer(sp.unit, sp.mutez(0), updateHandle)
+
+  # Liquidate an oven.
+  @sp.entry_point
+  def liquidate(self, targetAddress):
+    sp.set_type(targetAddress, sp.TAddress)
+
+    # Validate that the target is an oven.
+    isOvenHandle = sp.contract(
+      sp.TAddress,
+      self.data.ovenRegistryAddress,
+      "isOven"
+    ).open_some()
+    sp.transfer(targetAddress, sp.mutez(0), isOvenHandle)
+
+    # Reward the sender for using the pool.
+    tokenTransferParam = sp.record(
+      from_ = sp.self_address,
+      to_ = sp.sender, 
+      value = self.data.rewardAmount
+    )
+    transferHandle = sp.contract(
+      sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))),
+      self.data.tokenAddress,
+      "transfer"
+    ).open_some()
+    sp.transfer(tokenTransferParam, sp.mutez(0), transferHandle)
+
+    # Send a liquidation to the oven.
+    liquidateHandle = sp.contract(
+      sp.TUnit,
+      targetAddress,
+      "liquidate"
+    ).open_some()
+    sp.transfer(sp.unit, sp.mutez(0), liquidateHandle)
 
   # Deposit a number of tokens and receive LP tokens.
   @sp.entry_point
@@ -190,12 +236,155 @@ class PoolContract(Token.FA12):
     self.data.underlyingBalance = balance
 
   # TODO(keefertaylor): Governance to update dexter.
+  # TODO(keefertaylor): Governance to update reward amount.)
 
 # Only run tests if this file is main.
 if __name__ == "__main__":
 
   FA12 = sp.import_script_from_url("file:./test-helpers/fa12.py")
   FakeDexter = sp.import_script_from_url("file:./test-helpers/fake-dexter-pool.py")
+  FakeOven = sp.import_script_from_url("file:./test-helpers/fake-oven.py")
+  FakeOvenRegistry = sp.import_script_from_url("file:./test-helpers/fake-oven-registry.py")
+
+  ################################################################
+  # liquidate
+  ################################################################
+
+  @sp.add_test(name="liquidate - fails if given address is not oven")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND a fake oven registry which will identify all addresses as not ovens.
+    ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
+      isOvenValue = False
+    )
+    scenario += ovenRegistry
+
+    # AND a pool contract
+    pool = PoolContract(
+      ovenRegistryAddress = ovenRegistry.address,
+      tokenAddress = token.address,
+    )
+    scenario += pool
+
+    # AND the pool has a bunch of tokens
+    scenario += token.mint(
+      sp.record(
+        address = pool.address,
+        value = sp.nat(10000000000)
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND a fake oven.
+    oven = FakeOven.FakeOven()
+    scenario += oven
+
+    # WHEN liquidate is called
+    # THEN the call will fail
+    scenario += pool.liquidate(oven.address).run(
+      valid = False
+    )
+
+  @sp.add_test(name="liquidate - rewards sender")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND a fake oven registry
+    ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
+      isOvenValue = True
+    )
+    scenario += ovenRegistry
+
+    # AND a pool contract
+    rewardAmount = sp.nat(123)
+    pool = PoolContract(
+      ovenRegistryAddress = ovenRegistry.address,
+      rewardAmount = rewardAmount,
+      tokenAddress = token.address,
+    )
+    scenario += pool
+
+    # AND the pool has a bunch of tokens
+    scenario += token.mint(
+      sp.record(
+        address = pool.address,
+        value = sp.nat(10000000000)
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND a fake oven.
+    oven = FakeOven.FakeOven()
+    scenario += oven
+
+    # WHEN Alice liquidates an oven through the pool
+    scenario += pool.liquidate(oven.address).run(
+      sender = Addresses.ALICE_ADDRESS
+    )    
+
+    # THEN Alice receives kUSD.
+    scenario.verify(token.data.balances[Addresses.ALICE_ADDRESS].balance == rewardAmount)
+
+  @sp.add_test(name="liquidate - liqudates oven")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND a fake oven registry
+    ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
+      isOvenValue = True
+    )
+    scenario += ovenRegistry
+
+    # AND a pool contract
+    rewardAmount = sp.nat(123)
+    pool = PoolContract(
+      ovenRegistryAddress = ovenRegistry.address,
+      rewardAmount = rewardAmount,
+      tokenAddress = token.address,
+    )
+    scenario += pool
+
+    # AND the pool has a bunch of tokens
+    scenario += token.mint(
+      sp.record(
+        address = pool.address,
+        value = sp.nat(10000000000)
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # AND a fake oven.
+    oven = FakeOven.FakeOven()
+    scenario += oven
+
+    # WHEN Alice liquidates an oven through the pool
+    scenario += pool.liquidate(oven.address).run(
+      sender = Addresses.ALICE_ADDRESS
+    )    
+    # THEN the oven is liquidated
+    scenario.verify(oven.data.isLiquidated == True)
 
   ################################################################
   # updateBalance

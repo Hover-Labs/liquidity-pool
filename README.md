@@ -10,6 +10,9 @@ TODO(keefertaylor): Update the interface.
 # Accept a number of XTZ and immediately swap them to kUSD.
 default(unit)
 
+# Liquidate an oven.
+liquidate(address target)
+
 # Deposit a number of tokens and receive LP tokens back.
 deposit(nat numTokens)
 
