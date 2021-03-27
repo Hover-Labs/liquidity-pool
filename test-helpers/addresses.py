@@ -6,8 +6,9 @@ import smartpy as sp
 ADMIN_ADDRESS = sp.address("tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf")
 
 # Contract address
-TOKEN_ADDRESS = sp.address("tz1aJS7Pk9uWR3wWyFf1i3RwhYxN84G7stom")
 DEXTER_ADDRESS = sp.address("tz1aRoaRhSpRYvFdyvgWLL6TGyRoGF51wDjM")
+OVEN_REGISTRY_ADDRESS = sp.address("tz1VQnqCCqX4K5sP3FNkVSNKTdCAMJDd3E1n")
+TOKEN_ADDRESS = sp.address("tz1aJS7Pk9uWR3wWyFf1i3RwhYxN84G7stom")
 
 # An series of named addresses with no particular role.
 # These are used for token transfer tests.
