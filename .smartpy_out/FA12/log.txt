@@ -1,0 +1,145 @@
+Comment...
+ h1: FA1.2 template - Fungible assets
+Table Of Contents
+
+ FA1.2 template - Fungible assets
+ Accounts
+ Contract
+ Entry points
+# Admin mints a few coins
+# Alice transfers to Bob
+# Bob tries to transfer from Alice but he doesn't have her approval
+# Alice approves Bob and Bob transfers
+# Bob tries to over-transfer from Alice
+# Admin burns Bob token
+# Alice tries to burn Bob token
+# Admin pauses the contract and Alice cannot transfer anymore
+# Admin transfers while on pause
+# Admin unpauses the contract and transferts are allowed
+Comment...
+ h1: Accounts
+Computing sp.list([sp.test_account("Administrator"), sp.test_account("Alice"), sp.test_account("Robert")])...
+ => sp.list([sp.record(seed = 'Administrator', address = sp.address('tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w'), public_key = sp.key('edpktzrjdb1tx6dQecQGZL6CwhujWg1D2CXfXWBriqtJSA6kvqMwA2'), public_key_hash = sp.key_hash('tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w'), secret_key = sp.secret_key('edskRqFp3Z9AqoKrMNFb9bnWNwEsRzbjqjBhzmFMLF9UqB6VBmw7F8ppTiXaAnHtysmi6xFxoHf6rMUz6Y1ipiDz2EgwZQv3pa')), sp.record(seed = 'Alice', address = sp.address('tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi'), public_key = sp.key('edpkuvNy6TuQ2z8o9wnoaTtTXkzQk7nhegCHfxBc4ecsd4qG71KYNG'), public_key_hash = sp.key_hash('tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi'), secret_key = sp.secret_key('edskRijgcXx8gzqkq7SCBbrb6aDZQMmP6dznCQWgU1Jr4qPfJT1yFq5A39ja9G4wahS8uWtBurZy14Hy7GZkQh7WnopJTKtCQG')), sp.record(seed = 'Robert', address = sp.address('tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP'), public_key = sp.key('edpkvThfdv8Efh1MuqSTUk5EnUFCTjqN6kXDCNXpQ8udN3cKRhNDr2'), public_key_hash = sp.key_hash('tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP'), secret_key = sp.secret_key('edskRiaffUWqB9zgaEhuX6EmejbLzk2xcpSEXLv3G4cDfcbY75c71ASyGnFHXuaTAVMPt2bJLGGye1gm24oBmAc2k5VDHHo5Ua'))])
+Comment...
+ h1: Contract
+Comment...
+ h1: Entry points
+Creating contract
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {}) (Pair False 0))
+ => ./.smartpy_out/FA12/step_006_cont_0_storage.tz 1
+ => ./.smartpy_out/FA12/step_006_cont_0_storage.json 4
+ => ./.smartpy_out/FA12/step_006_cont_0_sizes.csv 2
+ => ./.smartpy_out/FA12/step_006_cont_0_storage.py 1
+ => ./.smartpy_out/FA12/step_006_cont_0_types.py 7
+ => ./.smartpy_out/FA12/step_006_cont_0_contract.tz 859
+ => ./.smartpy_out/FA12/step_006_cont_0_contract.json 944
+ => ./.smartpy_out/FA12/step_006_cont_0_contract.py 83
+Comment...
+ h2: Admin mints a few coins
+ => ./.smartpy_out/FA12/step_008_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_008_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_008_cont_0_params.json 1
+Executing mint(sp.record(address = sp.reduce(sp.test_account("Alice").address), value = 12))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {} 12)}) (Pair False 12))
+ => ./.smartpy_out/FA12/step_009_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_009_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_009_cont_0_params.json 1
+Executing mint(sp.record(address = sp.reduce(sp.test_account("Alice").address), value = 3))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {} 15)}) (Pair False 15))
+ => ./.smartpy_out/FA12/step_010_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_010_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_010_cont_0_params.json 1
+Executing mint(sp.record(address = sp.reduce(sp.test_account("Alice").address), value = 3))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {} 18)}) (Pair False 18))
+Comment...
+ h2: Alice transfers to Bob
+ => ./.smartpy_out/FA12/step_012_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_012_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_012_cont_0_params.json 4
+Executing transfer(sp.record(from_ = sp.reduce(sp.test_account("Alice").address), to_ = sp.reduce(sp.test_account("Robert").address), value = 4))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 4); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {} 14)}) (Pair False 18))
+Verifying sp.contract_data(0).balances[sp.reduce(sp.test_account("Alice").address)].balance == 14...
+ OK
+Comment...
+ h2: Bob tries to transfer from Alice but he doesn't have her approval
+ => ./.smartpy_out/FA12/step_015_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_015_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_015_cont_0_params.json 4
+Executing transfer(sp.record(from_ = sp.reduce(sp.test_account("Alice").address), to_ = sp.reduce(sp.test_account("Robert").address), value = 4))...
+ -> --- Expected failure in transaction --- Missing item in map: (sp.address('tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP')) is not in ({}), while evaluating self.data.balances[params.from_].approvals[sp.sender]
+Comment...
+ h2: Alice approves Bob and Bob transfers
+ => ./.smartpy_out/FA12/step_017_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_017_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_017_cont_0_params.json 1
+Executing approve(sp.record(spender = sp.reduce(sp.test_account("Robert").address), value = 5))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 4); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" 5} 14)}) (Pair False 18))
+ => ./.smartpy_out/FA12/step_018_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_018_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_018_cont_0_params.json 4
+Executing transfer(sp.record(from_ = sp.reduce(sp.test_account("Alice").address), to_ = sp.reduce(sp.test_account("Robert").address), value = 4))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 8); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" 1} 10)}) (Pair False 18))
+Comment...
+ h2: Bob tries to over-transfer from Alice
+ => ./.smartpy_out/FA12/step_020_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_020_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_020_cont_0_params.json 4
+Executing transfer(sp.record(from_ = sp.reduce(sp.test_account("Alice").address), to_ = sp.reduce(sp.test_account("Robert").address), value = 4))...
+ -> --- Expected failure in transaction --- WrongCondition in line 31: (sp.sender == self.data.administrator) | ((~ self.data.paused) & ((params.from_ == sp.sender) | (self.data.balances[params.from_].approvals[sp.sender] >= params.value)))
+Comment...
+ h2: Admin burns Bob token
+ => ./.smartpy_out/FA12/step_022_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_022_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_022_cont_0_params.json 1
+Executing burn(sp.record(address = sp.reduce(sp.test_account("Robert").address), value = 1))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 7); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" 1} 10)}) (Pair False 17))
+Verifying sp.contract_data(0).balances[sp.reduce(sp.test_account("Alice").address)].balance == 10...
+ OK
+Comment...
+ h2: Alice tries to burn Bob token
+ => ./.smartpy_out/FA12/step_025_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_025_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_025_cont_0_params.json 1
+Executing burn(sp.record(address = sp.reduce(sp.test_account("Robert").address), value = 1))...
+ -> --- Expected failure in transaction --- WrongCondition in line 92: (sp.sender == self.data.administrator) | (sp.sender == sp.self_address)
+Comment...
+ h2: Admin pauses the contract and Alice cannot transfer anymore
+ => ./.smartpy_out/FA12/step_027_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_027_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_027_cont_0_params.json 1
+Executing setPause(True)...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 7); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" 1} 10)}) (Pair True 17))
+ => ./.smartpy_out/FA12/step_028_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_028_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_028_cont_0_params.json 4
+Executing transfer(sp.record(from_ = sp.reduce(sp.test_account("Alice").address), to_ = sp.reduce(sp.test_account("Robert").address), value = 4))...
+ -> --- Expected failure in transaction --- WrongCondition in line 31: (sp.sender == self.data.administrator) | ((~ self.data.paused) & ((params.from_ == sp.sender) | (self.data.balances[params.from_].approvals[sp.sender] >= params.value)))
+Verifying sp.contract_data(0).balances[sp.reduce(sp.test_account("Alice").address)].balance == 10...
+ OK
+Comment...
+ h2: Admin transfers while on pause
+ => ./.smartpy_out/FA12/step_031_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_031_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_031_cont_0_params.json 4
+Executing transfer(sp.record(from_ = sp.reduce(sp.test_account("Alice").address), to_ = sp.reduce(sp.test_account("Robert").address), value = 1))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 8); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" 1} 9)}) (Pair True 17))
+Comment...
+ h2: Admin unpauses the contract and transferts are allowed
+ => ./.smartpy_out/FA12/step_033_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_033_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_033_cont_0_params.json 1
+Executing setPause(False)...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 8); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" 1} 9)}) (Pair False 17))
+Verifying sp.contract_data(0).balances[sp.reduce(sp.test_account("Alice").address)].balance == 9...
+ OK
+ => ./.smartpy_out/FA12/step_035_cont_0_params.py 1
+ => ./.smartpy_out/FA12/step_035_cont_0_params.tz 1
+ => ./.smartpy_out/FA12/step_035_cont_0_params.json 4
+Executing transfer(sp.record(from_ = sp.reduce(sp.test_account("Alice").address), to_ = sp.reduce(sp.test_account("Robert").address), value = 1))...
+ -> (Pair (Pair "tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w" {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" (Pair {} 9); Elt "tz1WxrQuZ4CK1MBUa2GqUWK1yJ4J6EtG1Gwi" (Pair {Elt "tz1Ns3YQJR6piMZ8GrD2iYu94Ybi1HFfNyBP" 1} 8)}) (Pair False 17))
+Verifying sp.contract_data(0).totalSupply == 17...
+ OK
+Verifying sp.contract_data(0).balances[sp.reduce(sp.test_account("Alice").address)].balance == 8...
+ OK
+Verifying sp.contract_data(0).balances[sp.reduce(sp.test_account("Robert").address)].balance == 9...
+ OK

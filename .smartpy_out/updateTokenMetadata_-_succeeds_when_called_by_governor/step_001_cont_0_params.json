@@ -1,0 +1,1 @@
+{ "prim": "Pair", "args": [ { "int": "0" }, [ { "prim": "Elt", "args": [ { "string": "new" }, { "bytes": "123456" } ] } ] ] }

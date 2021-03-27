@@ -1,0 +1,6 @@
+import smartpy as sp
+
+tstorage = sp.TRecord(administrator = sp.TAddress, balances = sp.TBigMap(sp.TAddress, sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat).layout(("approvals", "balance"))), paused = sp.TBool, totalSupply = sp.TNat).layout((("administrator", "balances"), ("paused", "totalSupply")))
+tparameter = sp.TVariant(approve = sp.TRecord(spender = sp.TAddress, value = sp.TNat).layout(("spender", "value")), burn = sp.TRecord(address = sp.TAddress, value = sp.TNat).layout(("address", "value")), getAdministrator = sp.TPair(sp.TUnit, sp.TContract(sp.TAddress)), getAllowance = sp.TPair(sp.TRecord(owner = sp.TAddress, spender = sp.TAddress).layout(("owner", "spender")), sp.TContract(sp.TNat)), getBalance = sp.TPair(sp.TAddress, sp.TContract(sp.TNat)), getTotalSupply = sp.TPair(sp.TUnit, sp.TContract(sp.TNat)), mint = sp.TRecord(address = sp.TAddress, value = sp.TNat).layout(("address", "value")), setAdministrator = sp.TAddress, setPause = sp.TBool, transfer = sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value")))).layout(((("approve", "burn"), ("getAdministrator", ("getAllowance", "getBalance"))), (("getTotalSupply", "mint"), ("setAdministrator", ("setPause", "transfer")))))
+tglobals = { }
+tviews = { }

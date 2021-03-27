@@ -1,0 +1,19 @@
+parameter (or (unit %default) (unit %liquidate));
+storage   bool;
+code
+  {
+    UNPAIR;     # @parameter : @storage
+    IF_LEFT
+      {
+        DROP;       # @storage
+        # == default == # @storage
+      }
+      {
+        DROP 2;     # 
+        # == liquidate ==
+        # self.data.isLiquidated = True # 
+        PUSH bool True; # bool
+      }; # bool
+    NIL operation; # list operation : bool
+    PAIR;       # pair (list operation) bool
+  };

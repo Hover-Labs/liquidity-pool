@@ -1,0 +1,25 @@
+parameter (or (unit %default) (address %isOven));
+storage   bool;
+code
+  {
+    UNPAIR;     # @parameter : @storage
+    IF_LEFT
+      {
+        DROP;       # @storage
+        # == default == # @storage
+      }
+      {
+        DROP;       # @storage
+        # == isOven ==
+        # sp.verify(self.data.isOvenValue, message = 'NOT OVEN') # @storage
+        DUP;        # @storage : @storage
+        IF
+          {}
+          {
+            PUSH string "NOT OVEN"; # string : @storage
+            FAILWITH;   # FAILED
+          }; # @storage
+      }; # @storage
+    NIL operation; # list operation : @storage
+    PAIR;       # pair (list operation) @storage
+  };

@@ -1,0 +1,44 @@
+parameter (or (unit %default) (pair %xtzToToken address (pair nat timestamp)));
+storage   address;
+code
+  {
+    UNPAIR;     # @parameter : @storage
+    IF_LEFT
+      {
+        DROP;       # @storage
+        # == default == # @storage
+        NIL operation; # list operation : @storage
+      }
+      {
+        # == xtzToToken ==
+        # sp.transfer(sp.record(from_ = sp.self_address, to_ = sp.fst(params), value = sp.fst(sp.ediv(sp.amount, sp.mutez(1)).open_some())), sp.tez(0), sp.contract(sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))), self.data.tokenAddress, entry_point='transfer').open_some()) # @parameter%xtzToToken : @storage
+        NIL operation; # list operation : @parameter%xtzToToken : @storage
+        DUP 3;      # @storage : list operation : @parameter%xtzToToken : @storage
+        CONTRACT %transfer (pair (address %from) (pair (address %to) (nat %value))); # option (contract (pair (address %from) (pair (address %to) (nat %value)))) : list operation : @parameter%xtzToToken : @storage
+        IF_SOME
+          {}
+          {
+            PUSH int 38; # int : list operation : @parameter%xtzToToken : @storage
+            FAILWITH;   # FAILED
+          }; # @some : list operation : @parameter%xtzToToken : @storage
+        PUSH mutez 0; # mutez : @some : list operation : @parameter%xtzToToken : @storage
+        PUSH mutez 1; # mutez : mutez : @some : list operation : @parameter%xtzToToken : @storage
+        AMOUNT;     # mutez : mutez : mutez : @some : list operation : @parameter%xtzToToken : @storage
+        EDIV;       # option (pair nat mutez) : mutez : @some : list operation : @parameter%xtzToToken : @storage
+        IF_SOME
+          {}
+          {
+            PUSH int 30; # int : mutez : @some : list operation : @parameter%xtzToToken : @storage
+            FAILWITH;   # FAILED
+          }; # @some : mutez : @some : list operation : @parameter%xtzToToken : @storage
+        CAR;        # nat : mutez : @some : list operation : @parameter%xtzToToken : @storage
+        DIG 4;      # @parameter%xtzToToken : nat : mutez : @some : list operation : @storage
+        CAR;        # address : nat : mutez : @some : list operation : @storage
+        PAIR %to %value; # pair (address %to) (nat %value) : mutez : @some : list operation : @storage
+        SELF_ADDRESS; # address : pair (address %to) (nat %value) : mutez : @some : list operation : @storage
+        PAIR %from; # pair (address %from) (pair (address %to) (nat %value)) : mutez : @some : list operation : @storage
+        TRANSFER_TOKENS; # operation : list operation : @storage
+        CONS;       # list operation : @storage
+      }; # list operation : @storage
+    PAIR;       # pair (list operation) @storage
+  };

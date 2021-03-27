@@ -1,0 +1,1 @@
+sp.record(isLiquidated = False)

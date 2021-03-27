@@ -1,0 +1,58 @@
+Creating contract
+ -> (Pair (Pair "tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf" {}) (Pair False 0))
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_storage.tz 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_storage.json 4
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_sizes.csv 2
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_storage.py 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_types.py 7
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_contract.tz 815
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_contract.json 881
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_000_cont_0_contract.py 81
+Creating contract
+ -> True
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_storage.tz 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_storage.json 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_sizes.csv 2
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_storage.py 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_types.py 7
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_contract.tz 25
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_contract.json 25
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_001_cont_1_contract.py 14
+Creating contract
+ -> (Pair (Pair (Pair (Pair "tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf" {}) (Pair "tz1aRoaRhSpRYvFdyvgWLL6TGyRoGF51wDjM" "tz1NoYvKjXTzTk54VpLxBfouJ33J8jwKPPvw")) (Pair (Pair {Elt "" 0x74657a6f732d73746f726167653a64617461; Elt "data" 0x7b20226e616d65223a2022446578746572204c69717569646174696e67206b555344222c2020226465736372697074696f6e223a20225374616b6564206b55534420696e206120446578746572206c69717569646174696f6e2073797374656d222c202022617574686f7273223a205b22486f766572204c616273203c68656c6c6f40686f7665722e656e67696e656572696e673e225d2c202022686f6d6570616765223a20202268747470733a2f2f6b6f6c696272692e66696e616e636522207d0a} "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF") (Pair False 123))) (Pair (Pair (Pair None None) (Pair None None)) (Pair (Pair 0 "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1") (Pair {Elt 0 (Pair 0 {Elt "decimals" 0x3138; Elt "icon" 0x2068747470733a2f2f6b6f6c696272692d646174612e73332e616d617a6f6e6177732e636f6d2f6c6f676f2e706e67; Elt "name" 0x446578746572204c69717569646174696e67206b555344; Elt "symbol" 0x6465787465724c6b555344})} (Pair 0 0)))))
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_storage.tz 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_storage.json 86
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_sizes.csv 2
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_storage.py 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_types.py 7
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_contract.tz 1989
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_contract.json 2113
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_002_cont_2_contract.py 200
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_003_cont_0_params.py 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_003_cont_0_params.tz 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_003_cont_0_params.json 1
+Executing mint(sp.record(address = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), value = 10000000000))...
+ -> (Pair (Pair "tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf" {Elt "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" (Pair {} 10000000000)}) (Pair False 10000000000))
+Creating contract
+ -> False
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_storage.tz 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_storage.json 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_sizes.csv 2
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_storage.py 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_types.py 7
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_contract.tz 19
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_contract.json 18
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_004_cont_3_contract.py 14
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_005_cont_2_params.py 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_005_cont_2_params.tz 1
+ => ./.smartpy_out/liquidate_-_rewards_sender/step_005_cont_2_params.json 1
+Executing liquidate(sp.address('KT1Tezooo3zzSmartPyzzSTATiCzzzseJjWC'))...
+ -> (Pair (Pair (Pair (Pair "tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf" {}) (Pair "tz1aRoaRhSpRYvFdyvgWLL6TGyRoGF51wDjM" "tz1NoYvKjXTzTk54VpLxBfouJ33J8jwKPPvw")) (Pair (Pair {Elt "" 0x74657a6f732d73746f726167653a64617461; Elt "data" 0x7b20226e616d65223a2022446578746572204c69717569646174696e67206b555344222c2020226465736372697074696f6e223a20225374616b6564206b55534420696e206120446578746572206c69717569646174696f6e2073797374656d222c202022617574686f7273223a205b22486f766572204c616273203c68656c6c6f40686f7665722e656e67696e656572696e673e225d2c202022686f6d6570616765223a20202268747470733a2f2f6b6f6c696272692e66696e616e636522207d0a} "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF") (Pair False 123))) (Pair (Pair (Pair None None) (Pair None None)) (Pair (Pair 0 "KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1") (Pair {Elt 0 (Pair 0 {Elt "decimals" 0x3138; Elt "icon" 0x2068747470733a2f2f6b6f6c696272692d646174612e73332e616d617a6f6e6177732e636f6d2f6c6f676f2e706e67; Elt "name" 0x446578746572204c69717569646174696e67206b555344; Elt "symbol" 0x6465787465724c6b555344})} (Pair 0 0)))))
+Executing isOven(sp.address('KT1Tezooo3zzSmartPyzzSTATiCzzzseJjWC'))...
+ -> True
+Executing transfer(sp.record(from_ = sp.address('KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H'), to_ = sp.address('tz1LLNkQK4UQV6QcFShiXJ2vT2ELw449MzAA'), value = 123))...
+ -> (Pair (Pair "tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf" {Elt "KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H" (Pair {} 9999999877); Elt "tz1LLNkQK4UQV6QcFShiXJ2vT2ELw449MzAA" (Pair {} 123)}) (Pair False 10000000000))
+Executing liquidate(sp.unit)...
+ -> True
+Verifying sp.contract_data(0).balances[sp.address('tz1LLNkQK4UQV6QcFShiXJ2vT2ELw449MzAA')].balance == 123...
+ OK

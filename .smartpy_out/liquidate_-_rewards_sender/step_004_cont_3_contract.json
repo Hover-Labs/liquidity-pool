@@ -1,0 +1,18 @@
+[
+  { "prim": "storage", "args": [ { "prim": "bool" } ] },
+  { "prim": "parameter", "args": [ { "prim": "or", "args": [ { "prim": "unit", "annots": [ "%default" ] }, { "prim": "unit", "annots": [ "%liquidate" ] } ] } ] },
+  {
+    "prim": "code",
+    "args": [
+      [
+        { "prim": "UNPAIR" },
+        {
+          "prim": "IF_LEFT",
+          "args": [ [ { "prim": "DROP" } ], [ { "prim": "DROP", "args": [ { "int": "2" } ] }, { "prim": "PUSH", "args": [ { "prim": "bool" }, { "prim": "True" } ] } ] ]
+        },
+        { "prim": "NIL", "args": [ { "prim": "operation" } ] },
+        { "prim": "PAIR" }
+      ]
+    ]
+  }
+]

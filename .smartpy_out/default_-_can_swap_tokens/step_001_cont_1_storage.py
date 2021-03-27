@@ -1,0 +1,1 @@
+sp.record(tokenAddress = sp.address("KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1"))

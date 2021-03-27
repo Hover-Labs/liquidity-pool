@@ -1,0 +1,61 @@
+[
+  { "prim": "storage", "args": [ { "prim": "address" } ] },
+  {
+    "prim": "parameter",
+    "args": [
+      {
+        "prim": "or",
+        "args": [
+          { "prim": "unit", "annots": [ "%default" ] },
+          { "prim": "pair", "args": [ { "prim": "address" }, { "prim": "pair", "args": [ { "prim": "nat" }, { "prim": "timestamp" } ] } ], "annots": [ "%xtzToToken" ] }
+        ]
+      }
+    ]
+  },
+  {
+    "prim": "code",
+    "args": [
+      [
+        { "prim": "UNPAIR" },
+        {
+          "prim": "IF_LEFT",
+          "args": [
+            [ { "prim": "DROP" }, { "prim": "NIL", "args": [ { "prim": "operation" } ] } ],
+            [
+              { "prim": "NIL", "args": [ { "prim": "operation" } ] },
+              { "prim": "DUP", "args": [ { "int": "3" } ] },
+              {
+                "prim": "CONTRACT",
+                "args": [
+                  {
+                    "prim": "pair",
+                    "args": [
+                      { "prim": "address", "annots": [ "%from" ] },
+                      { "prim": "pair", "args": [ { "prim": "address", "annots": [ "%to" ] }, { "prim": "nat", "annots": [ "%value" ] } ] }
+                    ]
+                  }
+                ],
+                "annots": [ "%transfer" ]
+              },
+              { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "38" } ] }, { "prim": "FAILWITH" } ], [] ] },
+              { "prim": "PUSH", "args": [ { "prim": "mutez" }, { "int": "0" } ] },
+              { "prim": "PUSH", "args": [ { "prim": "mutez" }, { "int": "1" } ] },
+              { "prim": "AMOUNT" },
+              { "prim": "EDIV" },
+              { "prim": "IF_NONE", "args": [ [ { "prim": "PUSH", "args": [ { "prim": "int" }, { "int": "30" } ] }, { "prim": "FAILWITH" } ], [] ] },
+              { "prim": "CAR" },
+              { "prim": "DIG", "args": [ { "int": "4" } ] },
+              { "prim": "CAR" },
+              { "prim": "PAIR", "annots": [ "%to", "%value" ] },
+              { "prim": "SELF_ADDRESS" },
+              { "prim": "PAIR", "annots": [ "%from" ] },
+              { "prim": "TRANSFER_TOKENS" },
+              { "prim": "CONS" }
+            ]
+          ]
+        },
+        { "prim": "PAIR" }
+      ]
+    ]
+  }
+]
