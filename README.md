@@ -1,10 +1,10 @@
-# LP Token Contracts
+# Kolibri Liquidation Pool
 
-This is a generic contract which takes in one set of tokens and issues LP tokens as a deposit.
-
-This contract can be used as a base to customize other contracts.
+This pool contract is allows users to stake `kUSD` and receive liquidating kUSD `lkUSD` in return.
 
 ## Interface
+
+TODO(keefertaylor): Update the interface.
 
 ```
 # Deposit a number of tokens and receive LP tokens back.
