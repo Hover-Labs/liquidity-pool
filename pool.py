@@ -201,10 +201,6 @@ class PoolContract(Token.FA12):
     ).open_some()
     sp.transfer(param, sp.mutez(0), contractHandle)
 
-  # Test
-  # Bad state
-  # bad sender
-
   # Private callback for redeem.
   @sp.entry_point
   def redeem_callback(self, updatedBalance):
