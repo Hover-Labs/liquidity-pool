@@ -243,7 +243,7 @@ class PoolContract(Token.FA12):
 
   # Update the governor address.
   @sp.entry_point
-  def updateGovernor(self, newGovernorAddress):
+  def updateGovernorAddress(self, newGovernorAddress):
     sp.set_type(newGovernorAddress, sp.TAddress)
 
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
@@ -257,7 +257,14 @@ class PoolContract(Token.FA12):
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
     self.data.rewardAmount = newRewardAmount
 
-  # TODO(keefertaylor): Governance to update dexter.
+  # Update the dexter pool address
+  @sp.entry_point
+  def updateDexterAddress(self, newDexterAddress):
+    sp.set_type(newDexterAddress, sp.TAddress)
+
+    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    self.data.dexterAddress = newDexterAddress
+
   # TODO(keefertaylor): Governance to update oven registry.
 
 # Only run tests if this file is main.
@@ -307,10 +314,10 @@ if __name__ == "__main__":
     scenario.verify(pool.data.rewardAmount == newRewardAmount)
 
   ################################################################
-  # updateGovernor
+  # updateDexterAddress
   ################################################################
 
-  @sp.add_test(name="updateGovernor - fails if sender is not governor")
+  @sp.add_test(name="updateDexterAddress - fails if sender is not governor")
   def test():
     scenario = sp.test_scenario()
 
@@ -318,15 +325,15 @@ if __name__ == "__main__":
     pool = PoolContract()
     scenario += pool
 
-    # WHEN updateGovernor is called by someone other than the governor
+    # WHEN updateDexterAddress is called by someone other than the governor
     # THEN the call will fail
     notGovernor = Addresses.NULL_ADDRESS
-    scenario += pool.updateGovernor(Addresses.ROTATED_ADDRESS).run(
+    scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
       sender = notGovernor,
       valid = False
     )
 
-  @sp.add_test(name="updateGovernor - can rotate governor")
+  @sp.add_test(name="updateDexterAddress - can rotate governor")
   def test():
     scenario = sp.test_scenario()
 
@@ -334,8 +341,45 @@ if __name__ == "__main__":
     pool = PoolContract()
     scenario += pool
 
-    # WHEN updateGovernor is called
-    scenario += pool.updateGovernor(Addresses.ROTATED_ADDRESS).run(
+    # WHEN updateDexterAddress is called
+    scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
+      sender = Addresses.GOVERNOR_ADDRESS,
+    )    
+
+    # THEN the dexter address is rotated.
+    scenario.verify(pool.data.dexterAddress == Addresses.ROTATED_ADDRESS)
+
+
+  ################################################################
+  # updateGovernorAddress
+  ################################################################
+
+  @sp.add_test(name="updateGovernorAddress - fails if sender is not governor")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateGovernorAddress is called by someone other than the governor
+    # THEN the call will fail
+    notGovernor = Addresses.NULL_ADDRESS
+    scenario += pool.updateGovernorAddress(Addresses.ROTATED_ADDRESS).run(
+      sender = notGovernor,
+      valid = False
+    )
+
+  @sp.add_test(name="updateGovernorAddress - can rotate governor")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateGovernorAddress is called
+    scenario += pool.updateGovernorAddress(Addresses.ROTATED_ADDRESS).run(
       sender = Addresses.GOVERNOR_ADDRESS,
     )    
 
