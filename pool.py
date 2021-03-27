@@ -9,6 +9,7 @@ PRECISION = 1000000000000000000 # 18 decimals
 IDLE = 0
 WAITING_UPDATE_BALANCE = 1
 WAITING_REDEEM = 2
+WAITING_DEPOSIT = 3
 
 Addresses = sp.import_script_from_url("file:./test-helpers/addresses.py")
 
@@ -41,6 +42,8 @@ class PoolContract(Token.FA12):
     # State machine states - exposed for testing.
     savedState_tokensToRedeem = sp.none,
     savedState_redeemer = sp.none,
+    savedState_tokensToDeposit = sp.none,
+    savedState_depositor = sp.none,
   ):
     self.init(
       # Parent class fields
@@ -65,6 +68,8 @@ class PoolContract(Token.FA12):
       state = state,
       savedState_tokensToRedeem = savedState_tokensToRedeem, # Amount of tokens to redeem, populated when state = WAITING_REDEEM
       savedState_redeemer = savedState_redeemer, # Account redeeming tokens, populated when state = WAITING_REDEEM
+      savedState_tokensToDeposit = savedState_tokensToDeposit, # Amount of tokens to deposit, populated when state = WAITING_DEPOSIT
+      savedState_depositor = savedState_depositor, # Account depositing the tokens, populated when state = WAITING_DEPOSIT
     )
 
   ################################################################
@@ -141,24 +146,54 @@ class PoolContract(Token.FA12):
 
   # Deposit a number of tokens and receive LP tokens.
   @sp.entry_point
-  def deposit(self, tokensToSupply):
-    sp.set_type(tokensToSupply, sp.TNat)
+  def deposit(self, tokensToDeposit):
+    sp.set_type(tokensToDeposit, sp.TNat)
+
+    # Validate state
+    sp.verify(self.data.state == IDLE, "bad state")
+
+    # Save state
+    self.data.state = WAITING_DEPOSIT
+    self.data.savedState_tokensToDeposit = sp.some(tokensToDeposit)
+    self.data.savedState_depositor = sp.some(sp.sender)
+
+    # Call token contract to update balance.
+    param = (sp.self_address, sp.self_entry_point(entry_point = 'deposit_callback'))
+    contractHandle = sp.contract(
+      sp.TPair(sp.TAddress, sp.TContract(sp.TNat)),
+      self.data.tokenAddress,
+      "getBalance",      
+    ).open_some()
+    sp.transfer(param, sp.mutez(0), contractHandle)
+
+  # Private callback for redeem.
+  @sp.entry_point
+  def deposit_callback(self, updatedBalance):
+    sp.set_type(updatedBalance, sp.TNat)
+
+    # Validate sender
+    sp.verify(sp.sender == self.data.tokenAddress, "bad sender")
+
+    # Validate state
+    sp.verify(self.data.state == WAITING_DEPOSIT, "bad state")
 
     # Calculate the tokens to issue.
-    newTokens = sp.local('newTokens', tokensToSupply * PRECISION)
+    tokensToDeposit = sp.local('tokensToDeposit', self.data.savedState_tokensToDeposit.open_some())
+    newTokens = sp.local('newTokens', tokensToDeposit.value * PRECISION)
     sp.if self.data.totalSupply != sp.nat(0):
-      newUnderlyingBalance = sp.local('newUnderlyingBalance', self.data.underlyingBalance + tokensToSupply)
-      fractionOfPoolOwnership = sp.local('fractionOfPoolOwnership', (tokensToSupply * PRECISION) / newUnderlyingBalance.value)
+      newUnderlyingBalance = sp.local('newUnderlyingBalance', updatedBalance + tokensToDeposit.value)
+      fractionOfPoolOwnership = sp.local('fractionOfPoolOwnership', (tokensToDeposit.value * PRECISION) / newUnderlyingBalance.value)
       newTokens.value = ((fractionOfPoolOwnership.value * self.data.totalSupply) / (sp.as_nat(PRECISION - fractionOfPoolOwnership.value)))
 
     # Update underlying balance
-    self.data.underlyingBalance += tokensToSupply
+    self.data.underlyingBalance = updatedBalance + tokensToDeposit.value
 
     # Transfer tokens to this contract.
+    depositor = sp.local('depositor', self.data.savedState_depositor.open_some())
     tokenTransferParam = sp.record(
-      from_ = sp.sender,
+      from_ = depositor.value,
       to_ = sp.self_address, 
-      value = tokensToSupply
+      value = tokensToDeposit.value
     )
     transferHandle = sp.contract(
       sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))),
@@ -167,9 +202,9 @@ class PoolContract(Token.FA12):
     ).open_some()
     sp.transfer(tokenTransferParam, sp.mutez(0), transferHandle)
 
-    # Mint tokens to the sender
+    # Mint tokens to the depositor
     tokenMintParam = sp.record(
-      address = sp.sender, 
+      address = depositor.value, 
       value = newTokens.value
     )
     mintHandle = sp.contract(
@@ -178,6 +213,11 @@ class PoolContract(Token.FA12):
       entry_point = 'mint',
     ).open_some()
     sp.transfer(tokenMintParam, sp.mutez(0), mintHandle)
+
+    # Reset state
+    self.data.state = IDLE
+    self.data.savedState_tokensToDeposit = sp.none
+    self.data.savedState_depositor = sp.none
 
   # Redeem a number of LP tokens for the underlying asset.
   @sp.entry_point
@@ -336,493 +376,493 @@ if __name__ == "__main__":
   FakeOven = sp.import_script_from_url("file:./test-helpers/fake-oven.py")
   FakeOvenRegistry = sp.import_script_from_url("file:./test-helpers/fake-oven-registry.py")
 
-  ################################################################
-  # updateRewardAmount
-  ################################################################
-
-  @sp.add_test(name="updateRewardAmount - fails if sender is not governor")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateRewardAmount is called by someone other than the governor
-    # THEN the call will fail
-    notGovernor = Addresses.NULL_ADDRESS
-    newRewardAmount = sp.nat(123)
-    scenario += pool.updateRewardAmount(newRewardAmount).run(
-      sender = notGovernor,
-      valid = False
-    )
-
-  @sp.add_test(name="updateRewardAmount - can update reward amount")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateRewardAmount is called
-    newRewardAmount = sp.nat(123)
-    scenario += pool.updateRewardAmount(newRewardAmount).run(
-      sender = Addresses.GOVERNOR_ADDRESS,
-    )    
-
-    # THEN the reward amount is updated.
-    scenario.verify(pool.data.rewardAmount == newRewardAmount)
-
-  ################################################################
-  # updateDexterAddress
-  ################################################################
-
-  @sp.add_test(name="updateDexterAddress - fails if sender is not governor")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateDexterAddress is called by someone other than the governor
-    # THEN the call will fail
-    notGovernor = Addresses.NULL_ADDRESS
-    scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
-      sender = notGovernor,
-      valid = False
-    )
-
-  @sp.add_test(name="updateDexterAddress - can rotate governor")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateDexterAddress is called
-    scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
-      sender = Addresses.GOVERNOR_ADDRESS,
-    )    
-
-    # THEN the dexter address is rotated.
-    scenario.verify(pool.data.dexterAddress == Addresses.ROTATED_ADDRESS)
-
-  ################################################################
-  # updateOvenRegistryAddress
-  ################################################################
-
-  @sp.add_test(name="updateOvenRegistryAddress - fails if sender is not governor")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateOvenRegistryAddress is called by someone other than the governor
-    # THEN the call will fail
-    notGovernor = Addresses.NULL_ADDRESS
-    scenario += pool.updateOvenRegistryAddress(Addresses.ROTATED_ADDRESS).run(
-      sender = notGovernor,
-      valid = False
-    )
-
-  @sp.add_test(name="updateOvenRegistryAddress - can rotate governor")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateOvenRegistryAddress is called
-    scenario += pool.updateOvenRegistryAddress(Addresses.ROTATED_ADDRESS).run(
-      sender = Addresses.GOVERNOR_ADDRESS,
-    )    
-
-    # THEN the dexter address is rotated.
-    scenario.verify(pool.data.ovenRegistryAddress == Addresses.ROTATED_ADDRESS)
-
-  ################################################################
-  # updateGovernorAddress
-  ################################################################
-
-  @sp.add_test(name="updateGovernorAddress - fails if sender is not governor")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateGovernorAddress is called by someone other than the governor
-    # THEN the call will fail
-    notGovernor = Addresses.NULL_ADDRESS
-    scenario += pool.updateGovernorAddress(Addresses.ROTATED_ADDRESS).run(
-      sender = notGovernor,
-      valid = False
-    )
-
-  @sp.add_test(name="updateGovernorAddress - can rotate governor")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a pool contract
-    pool = PoolContract()
-    scenario += pool
-
-    # WHEN updateGovernorAddress is called
-    scenario += pool.updateGovernorAddress(Addresses.ROTATED_ADDRESS).run(
-      sender = Addresses.GOVERNOR_ADDRESS,
-    )    
-
-    # THEN the governor is rotated.
-    scenario.verify(pool.data.governorAddress == Addresses.ROTATED_ADDRESS)
-
-  ################################################################
-  # liquidate
-  ################################################################
-
-  @sp.add_test(name="liquidate - fails if given address is not oven")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a fake oven registry which will identify all addresses as not ovens.
-    ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
-      isOvenValue = False
-    )
-    scenario += ovenRegistry
-
-    # AND a pool contract
-    pool = PoolContract(
-      ovenRegistryAddress = ovenRegistry.address,
-      tokenAddress = token.address,
-    )
-    scenario += pool
-
-    # AND the pool has a bunch of tokens
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = sp.nat(10000000000)
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # AND a fake oven.
-    oven = FakeOven.FakeOven()
-    scenario += oven
-
-    # WHEN liquidate is called
-    # THEN the call will fail
-    scenario += pool.liquidate(oven.address).run(
-      valid = False
-    )
-
-  @sp.add_test(name="liquidate - rewards sender")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a fake oven registry
-    ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
-      isOvenValue = True
-    )
-    scenario += ovenRegistry
-
-    # AND a pool contract
-    rewardAmount = sp.nat(123)
-    pool = PoolContract(
-      ovenRegistryAddress = ovenRegistry.address,
-      rewardAmount = rewardAmount,
-      tokenAddress = token.address,
-    )
-    scenario += pool
-
-    # AND the pool has a bunch of tokens
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = sp.nat(10000000000)
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # AND a fake oven.
-    oven = FakeOven.FakeOven()
-    scenario += oven
-
-    # WHEN Alice liquidates an oven through the pool
-    scenario += pool.liquidate(oven.address).run(
-      sender = Addresses.ALICE_ADDRESS
-    )    
-
-    # THEN Alice receives kUSD.
-    scenario.verify(token.data.balances[Addresses.ALICE_ADDRESS].balance == rewardAmount)
-
-  @sp.add_test(name="liquidate - liqudates oven")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a fake oven registry
-    ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
-      isOvenValue = True
-    )
-    scenario += ovenRegistry
-
-    # AND a pool contract
-    rewardAmount = sp.nat(123)
-    pool = PoolContract(
-      ovenRegistryAddress = ovenRegistry.address,
-      rewardAmount = rewardAmount,
-      tokenAddress = token.address,
-    )
-    scenario += pool
-
-    # AND the pool has a bunch of tokens
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = sp.nat(10000000000)
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # AND a fake oven.
-    oven = FakeOven.FakeOven()
-    scenario += oven
-
-    # WHEN Alice liquidates an oven through the pool
-    scenario += pool.liquidate(oven.address).run(
-      sender = Addresses.ALICE_ADDRESS
-    )    
-    # THEN the oven is liquidated
-    scenario.verify(oven.data.isLiquidated == True)
-
-  ################################################################
-  # updateBalance
-  ################################################################
-
-  @sp.add_test(name="updateBalance - updates balance")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract
-    pool = PoolContract(
-      tokenAddress = token.address
-    )
-    scenario += pool
-
-    # AnD the contract receives some tokens.
-    additionalTokens = 10
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = additionalTokens
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # WHEN the contract updates it's balance.
-    scenario += pool.updateBalance(sp.unit)
-
-    # THEN the balance is correct.
-    scenario.verify(pool.data.underlyingBalance == additionalTokens)
-
-  @sp.add_test(name="updateBalance - fails if not in idle state")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract not in the idle state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = WAITING_UPDATE_BALANCE,
-    )
-    scenario += pool
-
-    # AND the contract receives some tokens.
-    additionalTokens = 10
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = additionalTokens
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # WHEN the contract updates it's balance.
-    # THEN it fails
-    scenario += pool.updateBalance(sp.unit).run(
-      valid = False
-    )
-
-  ################################################################
-  # updateBalance_callback
-  ################################################################
-
-  @sp.add_test(name="updateBalance_callback - updates balance")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract in a WAITING_UPDATE_BALANCE state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = WAITING_UPDATE_BALANCE
-    )
-    scenario += pool
-
-    # WHEN the callback is called
-    newBalance = sp.nat(15)
-    scenario += pool.updateBalance_callback(newBalance).run(
-      sender = token.address
-    )
-
-    # THEN the balance is correct.
-    scenario.verify(pool.data.underlyingBalance == newBalance)    
-
-  @sp.add_test(name="updateBalance_callback - fails if not called from token contract")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract in a WAITING_UPDATE_BALANCE state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = WAITING_UPDATE_BALANCE
-    )
-    scenario += pool
-
-    # WHEN the callback is called
-    newBalance = sp.nat(15)
-    scenario += pool.updateBalance_callback(newBalance).run(
-      sender = Addresses.NULL_ADDRESS,
-      valid = False
-    )
-
-  @sp.add_test(name="updateBalance_callback - fails if not called from IDLE state")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract in a IDLE state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = IDLE
-    )
-    scenario += pool
-
-    # WHEN the callback is called
-    newBalance = sp.nat(15)
-    scenario += pool.updateBalance_callback(newBalance).run(
-      sender = token.address,
-      valid = False
-    )    
-
-  ################################################################
-  # default
-  ################################################################
-
-  @sp.add_test(name="default - can swap tokens")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a fake dexter contract
-    dexterPool = FakeDexter.FakePool(
-      tokenAddress = token.address
-    )
-    scenario += dexterPool
-
-    # AND a pool contract
-    pool = PoolContract(
-      dexterAddress = dexterPool.address,
-      tokenAddress = token.address,
-    )
-    scenario += pool
-
-    # AND the dexter pool has a bunch of tokens
-    scenario += token.mint(
-      sp.record(
-        address = dexterPool.address,
-        value = sp.nat(10000000000)
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # WHEN the pool receives some XTZ
-    amountMutez = sp.mutez(123456)
-    amountNat = sp.nat(123456)
-    scenario += pool.default(sp.unit).run(
-      amount = amountMutez
-    )
-
-    # THEN the amount is transferred to the dexter pool.
-    scenario.verify(dexterPool.balance == amountMutez)
-
-    # AND the pool contract received a number of kUSD back.
-    scenario.verify(token.data.balances[pool.address].balance == amountNat)
-
-    # AND the pool has no remaining XTZ.
-    scenario.verify(pool.balance == sp.mutez(0))
+#   ################################################################
+#   # updateRewardAmount
+#   ################################################################
+
+#   @sp.add_test(name="updateRewardAmount - fails if sender is not governor")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateRewardAmount is called by someone other than the governor
+#     # THEN the call will fail
+#     notGovernor = Addresses.NULL_ADDRESS
+#     newRewardAmount = sp.nat(123)
+#     scenario += pool.updateRewardAmount(newRewardAmount).run(
+#       sender = notGovernor,
+#       valid = False
+#     )
+
+#   @sp.add_test(name="updateRewardAmount - can update reward amount")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateRewardAmount is called
+#     newRewardAmount = sp.nat(123)
+#     scenario += pool.updateRewardAmount(newRewardAmount).run(
+#       sender = Addresses.GOVERNOR_ADDRESS,
+#     )    
+
+#     # THEN the reward amount is updated.
+#     scenario.verify(pool.data.rewardAmount == newRewardAmount)
+
+#   ################################################################
+#   # updateDexterAddress
+#   ################################################################
+
+#   @sp.add_test(name="updateDexterAddress - fails if sender is not governor")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateDexterAddress is called by someone other than the governor
+#     # THEN the call will fail
+#     notGovernor = Addresses.NULL_ADDRESS
+#     scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
+#       sender = notGovernor,
+#       valid = False
+#     )
+
+#   @sp.add_test(name="updateDexterAddress - can rotate governor")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateDexterAddress is called
+#     scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
+#       sender = Addresses.GOVERNOR_ADDRESS,
+#     )    
+
+#     # THEN the dexter address is rotated.
+#     scenario.verify(pool.data.dexterAddress == Addresses.ROTATED_ADDRESS)
+
+#   ################################################################
+#   # updateOvenRegistryAddress
+#   ################################################################
+
+#   @sp.add_test(name="updateOvenRegistryAddress - fails if sender is not governor")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateOvenRegistryAddress is called by someone other than the governor
+#     # THEN the call will fail
+#     notGovernor = Addresses.NULL_ADDRESS
+#     scenario += pool.updateOvenRegistryAddress(Addresses.ROTATED_ADDRESS).run(
+#       sender = notGovernor,
+#       valid = False
+#     )
+
+#   @sp.add_test(name="updateOvenRegistryAddress - can rotate governor")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateOvenRegistryAddress is called
+#     scenario += pool.updateOvenRegistryAddress(Addresses.ROTATED_ADDRESS).run(
+#       sender = Addresses.GOVERNOR_ADDRESS,
+#     )    
+
+#     # THEN the dexter address is rotated.
+#     scenario.verify(pool.data.ovenRegistryAddress == Addresses.ROTATED_ADDRESS)
+
+#   ################################################################
+#   # updateGovernorAddress
+#   ################################################################
+
+#   @sp.add_test(name="updateGovernorAddress - fails if sender is not governor")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateGovernorAddress is called by someone other than the governor
+#     # THEN the call will fail
+#     notGovernor = Addresses.NULL_ADDRESS
+#     scenario += pool.updateGovernorAddress(Addresses.ROTATED_ADDRESS).run(
+#       sender = notGovernor,
+#       valid = False
+#     )
+
+#   @sp.add_test(name="updateGovernorAddress - can rotate governor")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a pool contract
+#     pool = PoolContract()
+#     scenario += pool
+
+#     # WHEN updateGovernorAddress is called
+#     scenario += pool.updateGovernorAddress(Addresses.ROTATED_ADDRESS).run(
+#       sender = Addresses.GOVERNOR_ADDRESS,
+#     )    
+
+#     # THEN the governor is rotated.
+#     scenario.verify(pool.data.governorAddress == Addresses.ROTATED_ADDRESS)
+
+#   ################################################################
+#   # liquidate
+#   ################################################################
+
+#   @sp.add_test(name="liquidate - fails if given address is not oven")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a fake oven registry which will identify all addresses as not ovens.
+#     ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
+#       isOvenValue = False
+#     )
+#     scenario += ovenRegistry
+
+#     # AND a pool contract
+#     pool = PoolContract(
+#       ovenRegistryAddress = ovenRegistry.address,
+#       tokenAddress = token.address,
+#     )
+#     scenario += pool
+
+#     # AND the pool has a bunch of tokens
+#     scenario += token.mint(
+#       sp.record(
+#         address = pool.address,
+#         value = sp.nat(10000000000)
+#       )
+#     ).run(
+#       sender = Addresses.ADMIN_ADDRESS
+#     )
+
+#     # AND a fake oven.
+#     oven = FakeOven.FakeOven()
+#     scenario += oven
+
+#     # WHEN liquidate is called
+#     # THEN the call will fail
+#     scenario += pool.liquidate(oven.address).run(
+#       valid = False
+#     )
+
+#   @sp.add_test(name="liquidate - rewards sender")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a fake oven registry
+#     ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
+#       isOvenValue = True
+#     )
+#     scenario += ovenRegistry
+
+#     # AND a pool contract
+#     rewardAmount = sp.nat(123)
+#     pool = PoolContract(
+#       ovenRegistryAddress = ovenRegistry.address,
+#       rewardAmount = rewardAmount,
+#       tokenAddress = token.address,
+#     )
+#     scenario += pool
+
+#     # AND the pool has a bunch of tokens
+#     scenario += token.mint(
+#       sp.record(
+#         address = pool.address,
+#         value = sp.nat(10000000000)
+#       )
+#     ).run(
+#       sender = Addresses.ADMIN_ADDRESS
+#     )
+
+#     # AND a fake oven.
+#     oven = FakeOven.FakeOven()
+#     scenario += oven
+
+#     # WHEN Alice liquidates an oven through the pool
+#     scenario += pool.liquidate(oven.address).run(
+#       sender = Addresses.ALICE_ADDRESS
+#     )    
+
+#     # THEN Alice receives kUSD.
+#     scenario.verify(token.data.balances[Addresses.ALICE_ADDRESS].balance == rewardAmount)
+
+#   @sp.add_test(name="liquidate - liqudates oven")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a fake oven registry
+#     ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
+#       isOvenValue = True
+#     )
+#     scenario += ovenRegistry
+
+#     # AND a pool contract
+#     rewardAmount = sp.nat(123)
+#     pool = PoolContract(
+#       ovenRegistryAddress = ovenRegistry.address,
+#       rewardAmount = rewardAmount,
+#       tokenAddress = token.address,
+#     )
+#     scenario += pool
+
+#     # AND the pool has a bunch of tokens
+#     scenario += token.mint(
+#       sp.record(
+#         address = pool.address,
+#         value = sp.nat(10000000000)
+#       )
+#     ).run(
+#       sender = Addresses.ADMIN_ADDRESS
+#     )
+
+#     # AND a fake oven.
+#     oven = FakeOven.FakeOven()
+#     scenario += oven
+
+#     # WHEN Alice liquidates an oven through the pool
+#     scenario += pool.liquidate(oven.address).run(
+#       sender = Addresses.ALICE_ADDRESS
+#     )    
+#     # THEN the oven is liquidated
+#     scenario.verify(oven.data.isLiquidated == True)
+
+#   ################################################################
+#   # updateBalance
+#   ################################################################
+
+#   @sp.add_test(name="updateBalance - updates balance")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a pool contract
+#     pool = PoolContract(
+#       tokenAddress = token.address
+#     )
+#     scenario += pool
+
+#     # AnD the contract receives some tokens.
+#     additionalTokens = 10
+#     scenario += token.mint(
+#       sp.record(
+#         address = pool.address,
+#         value = additionalTokens
+#       )
+#     ).run(
+#       sender = Addresses.ADMIN_ADDRESS
+#     )
+
+#     # WHEN the contract updates it's balance.
+#     scenario += pool.updateBalance(sp.unit)
+
+#     # THEN the balance is correct.
+#     scenario.verify(pool.data.underlyingBalance == additionalTokens)
+
+#   @sp.add_test(name="updateBalance - fails if not in idle state")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a pool contract not in the idle state
+#     pool = PoolContract(
+#       tokenAddress = token.address,
+#       state = WAITING_UPDATE_BALANCE,
+#     )
+#     scenario += pool
+
+#     # AND the contract receives some tokens.
+#     additionalTokens = 10
+#     scenario += token.mint(
+#       sp.record(
+#         address = pool.address,
+#         value = additionalTokens
+#       )
+#     ).run(
+#       sender = Addresses.ADMIN_ADDRESS
+#     )
+
+#     # WHEN the contract updates it's balance.
+#     # THEN it fails
+#     scenario += pool.updateBalance(sp.unit).run(
+#       valid = False
+#     )
+
+#   ################################################################
+#   # updateBalance_callback
+#   ################################################################
+
+#   @sp.add_test(name="updateBalance_callback - updates balance")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a pool contract in a WAITING_UPDATE_BALANCE state
+#     pool = PoolContract(
+#       tokenAddress = token.address,
+#       state = WAITING_UPDATE_BALANCE
+#     )
+#     scenario += pool
+
+#     # WHEN the callback is called
+#     newBalance = sp.nat(15)
+#     scenario += pool.updateBalance_callback(newBalance).run(
+#       sender = token.address
+#     )
+
+#     # THEN the balance is correct.
+#     scenario.verify(pool.data.underlyingBalance == newBalance)    
+
+#   @sp.add_test(name="updateBalance_callback - fails if not called from token contract")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a pool contract in a WAITING_UPDATE_BALANCE state
+#     pool = PoolContract(
+#       tokenAddress = token.address,
+#       state = WAITING_UPDATE_BALANCE
+#     )
+#     scenario += pool
+
+#     # WHEN the callback is called
+#     newBalance = sp.nat(15)
+#     scenario += pool.updateBalance_callback(newBalance).run(
+#       sender = Addresses.NULL_ADDRESS,
+#       valid = False
+#     )
+
+#   @sp.add_test(name="updateBalance_callback - fails if not called from IDLE state")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a pool contract in a IDLE state
+#     pool = PoolContract(
+#       tokenAddress = token.address,
+#       state = IDLE
+#     )
+#     scenario += pool
+
+#     # WHEN the callback is called
+#     newBalance = sp.nat(15)
+#     scenario += pool.updateBalance_callback(newBalance).run(
+#       sender = token.address,
+#       valid = False
+#     )    
+
+#   ################################################################
+#   # default
+#   ################################################################
+
+#   @sp.add_test(name="default - can swap tokens")
+#   def test():
+#     scenario = sp.test_scenario()
+
+#     # GIVEN a token contract
+#     token = FA12.FA12(
+#       admin = Addresses.ADMIN_ADDRESS
+#     )
+#     scenario += token
+
+#     # AND a fake dexter contract
+#     dexterPool = FakeDexter.FakePool(
+#       tokenAddress = token.address
+#     )
+#     scenario += dexterPool
+
+#     # AND a pool contract
+#     pool = PoolContract(
+#       dexterAddress = dexterPool.address,
+#       tokenAddress = token.address,
+#     )
+#     scenario += pool
+
+#     # AND the dexter pool has a bunch of tokens
+#     scenario += token.mint(
+#       sp.record(
+#         address = dexterPool.address,
+#         value = sp.nat(10000000000)
+#       )
+#     ).run(
+#       sender = Addresses.ADMIN_ADDRESS
+#     )
+
+#     # WHEN the pool receives some XTZ
+#     amountMutez = sp.mutez(123456)
+#     amountNat = sp.nat(123456)
+#     scenario += pool.default(sp.unit).run(
+#       amount = amountMutez
+#     )
+
+#     # THEN the amount is transferred to the dexter pool.
+#     scenario.verify(dexterPool.balance == amountMutez)
+
+#     # AND the pool contract received a number of kUSD back.
+#     scenario.verify(token.data.balances[pool.address].balance == amountNat)
+
+#     # AND the pool has no remaining XTZ.
+#     scenario.verify(pool.balance == sp.mutez(0))
 
   ################################################################
   # deposit
@@ -1333,21 +1373,14 @@ if __name__ == "__main__":
       sender = Addresses.ADMIN_ADDRESS
     )
 
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # WHEN Alice withdraws from the contract
@@ -2270,7 +2303,6 @@ if __name__ == "__main__":
     )
     scenario += token
 
-
     # AND Alice has tokens
     aliceTokens = sp.nat(10)
     scenario += token.mint(
@@ -2292,21 +2324,14 @@ if __name__ == "__main__":
     )
     scenario += pool
     
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # AND the pool has tokens
@@ -2342,7 +2367,6 @@ if __name__ == "__main__":
     )
     scenario += token
 
-
     # AND Alice has tokens
     aliceTokens = sp.nat(10)
     scenario += token.mint(
@@ -2364,21 +2388,14 @@ if __name__ == "__main__":
     )
     scenario += pool
     
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # AND the pool has tokens
@@ -2411,7 +2428,6 @@ if __name__ == "__main__":
     )
     scenario += token
 
-
     # AND Alice has tokens
     aliceTokens = sp.nat(10)
     scenario += token.mint(
@@ -2433,21 +2449,14 @@ if __name__ == "__main__":
     )
     scenario += pool
     
-    # AND Alice has given the pool an allowance
-    scenario += token.approve(
+    # AND Alice has LP tokens
+    scenario += pool.mint(
       sp.record(
-        spender = pool.address,
-        value = aliceTokens
+        address = Addresses.ALICE_ADDRESS,
+        value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ALICE_ADDRESS
-    )
-
-    # AND Alice deposits tokens in the contract.
-    scenario += pool.deposit(
-      aliceTokens
-    ).run(
-      sender = Addresses.ALICE_ADDRESS
+      sender = Addresses.ADMIN_ADDRESS
     )
 
     # AND the pool has tokens

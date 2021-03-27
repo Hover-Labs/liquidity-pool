@@ -35,6 +35,10 @@ class FA12_core(sp.Contract):
 
     @sp.view(sp.TNat)
     def getBalance(self, params):
+        # CHANGED: Add address if needed. This fixes a bug in our tests where  you can't
+        # get a balance when balance is implicitly zero.
+        self.addAddressIfNecessary(params)
+
         sp.result(self.data.balances[params].balance)
 
     @sp.view(sp.TNat)
