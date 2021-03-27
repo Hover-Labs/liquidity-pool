@@ -7,6 +7,9 @@ This pool contract is allows users to stake `kUSD` and receive liquidating kUSD 
 TODO(keefertaylor): Update the interface.
 
 ```
+# Accept a number of XTZ and immediately swap them to kUSD.
+default(unit)
+
 # Deposit a number of tokens and receive LP tokens back.
 deposit(nat numTokens)
 

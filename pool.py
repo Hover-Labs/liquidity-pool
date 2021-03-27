@@ -20,7 +20,10 @@ class PoolContract(Token.FA12):
     paused = False,
 
     # The address of the token contract which will be deposited.
-    tokenAddress = sp.address("tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf"),
+    tokenAddress = Addresses.TOKEN_ADDRESS,
+
+    # The address of the Dexter contract.
+    dexterAddress = Addresses.DEXTER_ADDRESS,
 
     # The initial state of the state machine.
     state = IDLE,
@@ -34,11 +37,44 @@ class PoolContract(Token.FA12):
 
       # Core data
       tokenAddress = tokenAddress,
+      dexterAddress = dexterAddress,
 
       # Internal state
       underlyingBalance = sp.nat(0),
+      
+      # State machinge
       state = state,
     )
+
+  # Accept XTZ and immediately swap them for kUSD on Dexter.
+  @sp.entry_point
+  def default(self, unit):
+    sp.set_type(unit, sp.TUnit)
+
+    # Invoke Dexter.
+    tradeParam = (
+      sp.self_address, # To param
+      (
+        1, # Min tokens bought - Accept any trade
+        sp.now.add_seconds(sp.int(60 * 60)) # Deadline - Abitrarily set 1 hour in future
+      )
+    )    
+    tradeHandle = sp.contract(
+      sp.TPair(sp.TAddress, sp.TPair(sp.TNat, sp.TTimestamp)),
+      self.data.dexterAddress,
+      "xtzToToken"
+    ).open_some()
+    sp.transfer(tradeParam, sp.balance, tradeHandle)
+
+    # Update token balance.
+    # NOTE: In BFS this is a no-op (the update will occur before Dexter has traded). If Florence protocol
+    # is accepted, then DFS call order will be used and this will update balance.
+    updateHandle = sp.contract(
+      sp.TUnit,
+      sp.self_address,
+      "updateBalance"
+    ).open_some()
+    sp.transfer(sp.unit, sp.mutez(0), updateHandle)
 
   # Deposit a number of tokens and receive LP tokens.
   @sp.entry_point
@@ -152,11 +188,14 @@ class PoolContract(Token.FA12):
 
     # Update balance.
     self.data.underlyingBalance = balance
-    
+
+  # TODO(keefertaylor): Governance to update dexter.
+
 # Only run tests if this file is main.
 if __name__ == "__main__":
 
   FA12 = sp.import_script_from_url("file:./test-helpers/fa12.py")
+  FakeDexter = sp.import_script_from_url("file:./test-helpers/fake-dexter-pool.py")
 
   ################################################################
   # updateBalance
@@ -306,6 +345,59 @@ if __name__ == "__main__":
       sender = token.address,
       valid = False
     )    
+
+  ################################################################
+  # default
+  ################################################################
+
+  @sp.add_test(name="default - can swap tokens")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a token contract
+    token = FA12.FA12(
+      admin = Addresses.ADMIN_ADDRESS
+    )
+    scenario += token
+
+    # AND a fake dexter contract
+    dexterPool = FakeDexter.FakePool(
+      tokenAddress = token.address
+    )
+    scenario += dexterPool
+
+    # AND a pool contract
+    pool = PoolContract(
+      dexterAddress = dexterPool.address,
+      tokenAddress = token.address,
+    )
+    scenario += pool
+
+    # AND the dexter pool has a bunch of tokens
+    scenario += token.mint(
+      sp.record(
+        address = dexterPool.address,
+        value = sp.nat(10000000000)
+      )
+    ).run(
+      sender = Addresses.ADMIN_ADDRESS
+    )
+
+    # WHEN the pool receives some XTZ
+    amountMutez = sp.mutez(123456)
+    amountNat = sp.nat(123456)
+    scenario += pool.default(sp.unit).run(
+      amount = amountMutez
+    )
+
+    # THEN the amount is transferred to the dexter pool.
+    scenario.verify(dexterPool.balance == amountMutez)
+
+    # AND the pool contract received a number of kUSD back.
+    scenario.verify(token.data.balances[pool.address].balance == amountNat)
+
+    # AND the pool has no remaining XTZ.
+    scenario.verify(pool.balance == sp.mutez(0))
 
   ################################################################
   # deposit
