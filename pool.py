@@ -28,6 +28,9 @@ class PoolContract(Token.FA12):
     # The address of the Oven Registry contract.
     ovenRegistryAddress = Addresses.OVEN_REGISTRY_ADDRESS,
 
+    # The governor of the pool.
+    governorAddress = Addresses.GOVERNOR_ADDRESS,
+
     # How much kUSD to reward a liquidator with.
     rewardAmount = PRECISION, # 1 kUSD
 
@@ -43,6 +46,7 @@ class PoolContract(Token.FA12):
 
       # Addresses.
       dexterAddress = dexterAddress,
+      governorAddress = governorAddress,
       ovenRegistryAddress = ovenRegistryAddress,
       tokenAddress = tokenAddress,
 
@@ -55,8 +59,6 @@ class PoolContract(Token.FA12):
       # State machinge
       state = state,
     )
-
-  # TODO(keefertaylor): For maximum safety, ensure not-state machine functions are always idle?
 
   # Accept XTZ and immediately swap them for kUSD on Dexter.
   @sp.entry_point
@@ -235,8 +237,17 @@ class PoolContract(Token.FA12):
     # Update balance.
     self.data.underlyingBalance = balance
 
+  # Update the governor address.
+  @sp.entry_point
+  def updateGovernor(self, newGovernorAddress):
+    sp.set_type(newGovernorAddress, sp.TAddress)
+
+    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    self.data.governorAddress = newGovernorAddress
+
   # TODO(keefertaylor): Governance to update dexter.
-  # TODO(keefertaylor): Governance to update reward amount.)
+  # TODO(keefertaylor): Governance to update oven registry.
+  # TODO(keefertaylor): Governance to update reward amount.
 
 # Only run tests if this file is main.
 if __name__ == "__main__":
@@ -245,6 +256,42 @@ if __name__ == "__main__":
   FakeDexter = sp.import_script_from_url("file:./test-helpers/fake-dexter-pool.py")
   FakeOven = sp.import_script_from_url("file:./test-helpers/fake-oven.py")
   FakeOvenRegistry = sp.import_script_from_url("file:./test-helpers/fake-oven-registry.py")
+
+  ################################################################
+  # updateGovernor
+  ################################################################
+
+  @sp.add_test(name="updateGovernor - fails if sender is not governor")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateGovernor is called by someone other than the governor
+    # THEN the call will fail
+    notGovernor = Addresses.NULL_ADDRESS
+    scenario += pool.updateGovernor(Addresses.ROTATED_ADDRESS).run(
+      sender = notGovernor,
+      valid = False
+    )
+
+  @sp.add_test(name="updateGovernor - can rotate governor")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateGovernor is called
+    scenario += pool.updateGovernor(Addresses.ROTATED_ADDRESS).run(
+      sender = Addresses.GOVERNOR_ADDRESS,
+    )    
+
+    # THEN the governor is rotated.
+    scenario.verify(pool.data.governorAddress == Addresses.ROTATED_ADDRESS)
 
   ################################################################
   # liquidate
