@@ -264,8 +264,14 @@ class PoolContract(Token.FA12):
 
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
     self.data.dexterAddress = newDexterAddress
+  
+  # Update the oven registry address
+  @sp.entry_point
+  def updateOvenRegistryAddress(self, newOvenRegistryAddress):
+    sp.set_type(newOvenRegistryAddress, sp.TAddress)
 
-  # TODO(keefertaylor): Governance to update oven registry.
+    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    self.data.ovenRegistryAddress = newOvenRegistryAddress    
 
 # Only run tests if this file is main.
 if __name__ == "__main__":
@@ -349,6 +355,41 @@ if __name__ == "__main__":
     # THEN the dexter address is rotated.
     scenario.verify(pool.data.dexterAddress == Addresses.ROTATED_ADDRESS)
 
+  ################################################################
+  # updateOvenRegistryAddress
+  ################################################################
+
+  @sp.add_test(name="updateOvenRegistryAddress - fails if sender is not governor")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateOvenupdateOvenRegistryAddressRegistry is called by someone other than the governor
+    # THEN the call will fail
+    notGovernor = Addresses.NULL_ADDRESS
+    scenario += pool.updateOvenRegistryAddress(Addresses.ROTATED_ADDRESS).run(
+      sender = notGovernor,
+      valid = False
+    )
+
+  @sp.add_test(name="updateOvenRegistryAddress - can rotate governor")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract
+    pool = PoolContract()
+    scenario += pool
+
+    # WHEN updateOvenRegistryAddress is called
+    scenario += pool.updateOvenRegistryAddress(Addresses.ROTATED_ADDRESS).run(
+      sender = Addresses.GOVERNOR_ADDRESS,
+    )    
+
+    # THEN the dexter address is rotated.
+    scenario.verify(pool.data.ovenRegistryAddress == Addresses.ROTATED_ADDRESS)
 
   ################################################################
   # updateGovernorAddress
