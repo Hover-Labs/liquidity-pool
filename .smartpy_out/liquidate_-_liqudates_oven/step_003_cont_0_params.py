@@ -1,1 +1,0 @@
-sp.record(address = sp.address("KT1Tezooo2zzSmartPyzzSTATiCzzzwqqQ4H"), value = 10000000000)

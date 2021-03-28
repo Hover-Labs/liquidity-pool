@@ -1,1 +1,0 @@
-sp.record(address = sp.address('tz1UMCB2AHSTwG7YcGNr31CqYCtGN873royv'), value = 40)

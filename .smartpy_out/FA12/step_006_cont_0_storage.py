@@ -1,1 +1,0 @@
-sp.record(administrator = sp.address('tz1hdQscorfqMzFqYxnrApuS5i6QSTuoAp3w'), balances = {}, paused = False, totalSupply = 0)
