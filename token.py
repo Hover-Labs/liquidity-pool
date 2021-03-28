@@ -14,11 +14,9 @@ Addresses = sp.import_script_from_url("file:./test-helpers/addresses.py")
 class FA12(sp.Contract):
     def __init__(
         self, 
-        administratorAddress = Addresses.ADMIN_ADDRESS,
         **extra_storage
     ):
         self.init(
-            administrator = administratorAddress,
             paused = False,
             balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
             totalSupply = 0, 
@@ -95,28 +93,12 @@ class FA12(sp.Contract):
         self.data.balances[params.address].balance = sp.as_nat(self.data.balances[params.address].balance - params.value)
         self.data.totalSupply = sp.as_nat(self.data.totalSupply - params.value)
 
+    # CHANGED: Hardcode this function to `False`. There is no administrator.
     def is_administrator(self, sender):
-        return sender == self.data.administrator
+        return False
 
-    @sp.entry_point
-    def setAdministrator(self, params):
-        sp.set_type(params, sp.TAddress)
-        sp.verify(self.is_administrator(sp.sender))
-        self.data.administrator = params
-
-    @sp.view(sp.TAddress)
-    def getAdministrator(self, params):
-        sp.set_type(params, sp.TUnit)
-        sp.result(self.data.administrator)
-
-    def is_paused(self):
-        return self.data.paused
-
-    @sp.entry_point
-    def setPause(self, params):
-        sp.set_type(params, sp.TBool)
-        sp.verify(self.is_administrator(sp.sender))
-        self.data.paused = params
+    # CHANGED: Remove `[get,set]Administrator` functions. There are no administrators. 
+    # CHANGED: Remove `pause`
 
 if "templates" not in __name__:
     @sp.add_test(name = "FA12")

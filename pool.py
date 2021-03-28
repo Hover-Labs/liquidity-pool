@@ -97,7 +97,6 @@ class PoolContract(Token.FA12):
 
     self.init(
       # Parent class fields
-      administrator = administrator,
       paused = paused,
       balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
       totalSupply = 0,
