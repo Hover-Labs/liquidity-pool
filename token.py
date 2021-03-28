@@ -17,7 +17,6 @@ class FA12(sp.Contract):
         **extra_storage
     ):
         self.init(
-            paused = False,
             balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
             totalSupply = 0, 
             **extra_storage
