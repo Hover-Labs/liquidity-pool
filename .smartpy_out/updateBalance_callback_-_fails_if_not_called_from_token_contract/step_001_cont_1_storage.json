@@ -33,7 +33,7 @@
                 { "string": "tz1VQnqCCqX4K5sP3FNkVSNKTdCAMJDd3E1n" }
               ]
             },
-            { "prim": "Pair", "args": [ { "prim": "False" }, { "int": "1000000000000000000" } ] }
+            { "prim": "Pair", "args": [ { "prim": "False" }, { "int": "1" } ] }
           ]
         }
       ]

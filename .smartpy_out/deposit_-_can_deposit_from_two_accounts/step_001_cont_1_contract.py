@@ -2,7 +2,7 @@ import smartpy as sp
 
 class Contract(sp.Contract):
   def __init__(self):
-    self.init(administrator = sp.address('tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf'), balances = {}, dexterAddress = sp.address('tz1aRoaRhSpRYvFdyvgWLL6TGyRoGF51wDjM'), governorAddress = sp.address('tz1NoYvKjXTzTk54VpLxBfouJ33J8jwKPPvw'), metadata = {'' : sp.bytes('0x74657a6f732d73746f726167653a64617461'), 'data' : sp.bytes('0x7b20226e616d65223a2022446578746572204c69717569646174696e67206b555344222c2020226465736372697074696f6e223a20225374616b6564206b55534420696e206120446578746572206c69717569646174696f6e2073797374656d222c202022617574686f7273223a205b22486f766572204c616273203c68656c6c6f40686f7665722e656e67696e656572696e673e225d2c202022686f6d6570616765223a20202268747470733a2f2f6b6f6c696272692e66696e616e636522207d0a')}, ovenRegistryAddress = sp.address('tz1VQnqCCqX4K5sP3FNkVSNKTdCAMJDd3E1n'), paused = False, rewardAmount = 1000000000000000000, savedState_depositor = sp.none, savedState_redeemer = sp.none, savedState_tokensToDeposit = sp.none, savedState_tokensToRedeem = sp.none, state = 0, tokenAddress = sp.address("KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1"), token_metadata = {0 : (0, {'decimals' : sp.bytes('0x3138'), 'icon' : sp.bytes('0x2068747470733a2f2f6b6f6c696272692d646174612e73332e616d617a6f6e6177732e636f6d2f6c6f676f2e706e67'), 'name' : sp.bytes('0x446578746572204c69717569646174696e67206b555344'), 'symbol' : sp.bytes('0x6465787465724c6b555344')})}, totalSupply = 0, underlyingBalance = 0)
+    self.init(administrator = sp.address('tz1abmz7jiCV2GH2u81LRrGgAFFgvQgiDiaf'), balances = {}, dexterAddress = sp.address('tz1aRoaRhSpRYvFdyvgWLL6TGyRoGF51wDjM'), governorAddress = sp.address('tz1NoYvKjXTzTk54VpLxBfouJ33J8jwKPPvw'), metadata = {'' : sp.bytes('0x74657a6f732d73746f726167653a64617461'), 'data' : sp.bytes('0x7b20226e616d65223a2022446578746572204c69717569646174696e67206b555344222c2020226465736372697074696f6e223a20225374616b6564206b55534420696e206120446578746572206c69717569646174696f6e2073797374656d222c202022617574686f7273223a205b22486f766572204c616273203c68656c6c6f40686f7665722e656e67696e656572696e673e225d2c202022686f6d6570616765223a20202268747470733a2f2f6b6f6c696272692e66696e616e636522207d0a')}, ovenRegistryAddress = sp.address('tz1VQnqCCqX4K5sP3FNkVSNKTdCAMJDd3E1n'), paused = False, rewardPercent = 1, savedState_depositor = sp.none, savedState_redeemer = sp.none, savedState_tokensToDeposit = sp.none, savedState_tokensToRedeem = sp.none, state = 0, tokenAddress = sp.address("KT1TezoooozzSmartPyzzSTATiCzzzwwBFA1"), token_metadata = {0 : (0, {'decimals' : sp.bytes('0x3138'), 'icon' : sp.bytes('0x2068747470733a2f2f6b6f6c696272692d646174612e73332e616d617a6f6e6177732e636f6d2f6c6f676f2e706e67'), 'name' : sp.bytes('0x446578746572204c69717569646174696e67206b555344'), 'symbol' : sp.bytes('0x6465787465724c6b555344')})}, totalSupply = 0, underlyingBalance = 0)
 
   @sp.entry_point
   def approve(self, params):
@@ -24,7 +24,8 @@ class Contract(sp.Contract):
   @sp.entry_point
   def default(self, params):
     sp.set_type(params, sp.TUnit)
-    sp.transfer((sp.self_address, (1, sp.add_seconds(sp.now, 3600))), sp.balance, sp.contract(sp.TPair(sp.TAddress, sp.TPair(sp.TNat, sp.TTimestamp)), self.data.dexterAddress, entry_point='xtzToToken').open_some())
+    sp.send(sp.source, sp.split_tokens(sp.amount, self.data.rewardPercent, 100))
+    sp.transfer((sp.self_address, (1, sp.add_seconds(sp.now, 3600))), sp.balance - sp.split_tokens(sp.amount, self.data.rewardPercent, 100), sp.contract(sp.TPair(sp.TAddress, sp.TPair(sp.TNat, sp.TTimestamp)), self.data.dexterAddress, entry_point='xtzToToken').open_some())
     sp.send(sp.self_address, sp.tez(0))
 
   @sp.entry_point
@@ -58,36 +59,35 @@ class Contract(sp.Contract):
   @sp.entry_point
   def getAdministrator(self, params):
     sp.set_type(sp.fst(params), sp.TUnit)
-    __s153 = sp.local("__s153", self.data.administrator)
+    __s145 = sp.local("__s145", self.data.administrator)
     sp.set_type(sp.snd(params), sp.TContract(sp.TAddress))
-    sp.transfer(__s153.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s145.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def getAllowance(self, params):
-    __s154 = sp.local("__s154", self.data.balances[sp.fst(params).owner].approvals[sp.fst(params).spender])
+    __s146 = sp.local("__s146", self.data.balances[sp.fst(params).owner].approvals[sp.fst(params).spender])
     sp.set_type(sp.snd(params), sp.TContract(sp.TNat))
-    sp.transfer(__s154.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s146.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def getBalance(self, params):
     sp.if ~ (self.data.balances.contains(sp.fst(params))):
       self.data.balances[sp.fst(params)] = sp.record(approvals = {}, balance = 0)
-    __s155 = sp.local("__s155", self.data.balances[sp.fst(params)].balance)
+    __s147 = sp.local("__s147", self.data.balances[sp.fst(params)].balance)
     sp.set_type(sp.snd(params), sp.TContract(sp.TNat))
-    sp.transfer(__s155.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s147.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def getTotalSupply(self, params):
     sp.set_type(sp.fst(params), sp.TUnit)
-    __s156 = sp.local("__s156", self.data.totalSupply)
+    __s148 = sp.local("__s148", self.data.totalSupply)
     sp.set_type(sp.snd(params), sp.TContract(sp.TNat))
-    sp.transfer(__s156.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s148.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def liquidate(self, params):
     sp.set_type(params, sp.TAddress)
     sp.transfer(params, sp.tez(0), sp.contract(sp.TAddress, self.data.ovenRegistryAddress, entry_point='isOven').open_some())
-    sp.transfer(sp.record(from_ = sp.self_address, to_ = sp.sender, value = self.data.rewardAmount), sp.tez(0), sp.contract(sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))), self.data.tokenAddress, entry_point='transfer').open_some())
     sp.send(params, sp.tez(0))
 
   @sp.entry_point
@@ -188,10 +188,10 @@ class Contract(sp.Contract):
     self.data.ovenRegistryAddress = params
 
   @sp.entry_point
-  def updateRewardAmount(self, params):
+  def updateRewardPercent(self, params):
     sp.set_type(params, sp.TNat)
     sp.verify(sp.sender == self.data.governorAddress, message = 'not governor')
-    self.data.rewardAmount = params
+    self.data.rewardPercent = params
 
   @sp.entry_point
   def updateTokenMetadata(self, params):

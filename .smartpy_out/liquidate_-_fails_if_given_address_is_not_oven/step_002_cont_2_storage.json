@@ -33,7 +33,7 @@
                 { "string": "KT1Tezooo1zzSmartPyzzSTATiCzzzyfC8eF" }
               ]
             },
-            { "prim": "Pair", "args": [ { "prim": "False" }, { "int": "1000000000000000000" } ] }
+            { "prim": "Pair", "args": [ { "prim": "False" }, { "int": "1" } ] }
           ]
         }
       ]

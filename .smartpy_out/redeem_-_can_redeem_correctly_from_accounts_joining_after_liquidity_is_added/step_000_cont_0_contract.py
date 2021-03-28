@@ -22,30 +22,30 @@ class Contract(sp.Contract):
   @sp.entry_point
   def getAdministrator(self, params):
     sp.set_type(sp.fst(params), sp.TUnit)
-    __s261 = sp.local("__s261", self.data.administrator)
+    __s253 = sp.local("__s253", self.data.administrator)
     sp.set_type(sp.snd(params), sp.TContract(sp.TAddress))
-    sp.transfer(__s261.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s253.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def getAllowance(self, params):
-    __s262 = sp.local("__s262", self.data.balances[sp.fst(params).owner].approvals[sp.fst(params).spender])
+    __s254 = sp.local("__s254", self.data.balances[sp.fst(params).owner].approvals[sp.fst(params).spender])
     sp.set_type(sp.snd(params), sp.TContract(sp.TNat))
-    sp.transfer(__s262.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s254.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def getBalance(self, params):
     sp.if ~ (self.data.balances.contains(sp.fst(params))):
       self.data.balances[sp.fst(params)] = sp.record(approvals = {}, balance = 0)
-    __s263 = sp.local("__s263", self.data.balances[sp.fst(params)].balance)
+    __s255 = sp.local("__s255", self.data.balances[sp.fst(params)].balance)
     sp.set_type(sp.snd(params), sp.TContract(sp.TNat))
-    sp.transfer(__s263.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s255.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def getTotalSupply(self, params):
     sp.set_type(sp.fst(params), sp.TUnit)
-    __s264 = sp.local("__s264", self.data.totalSupply)
+    __s256 = sp.local("__s256", self.data.totalSupply)
     sp.set_type(sp.snd(params), sp.TContract(sp.TNat))
-    sp.transfer(__s264.value, sp.tez(0), sp.snd(params))
+    sp.transfer(__s256.value, sp.tez(0), sp.snd(params))
 
   @sp.entry_point
   def mint(self, params):

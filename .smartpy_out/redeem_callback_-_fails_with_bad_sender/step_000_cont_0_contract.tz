@@ -228,7 +228,7 @@ code
                 DUG 2;      # @storage : @parameter%getAdministrator : @storage
                 CAR;        # pair (address %administrator) (big_map %balances address (pair (map %approvals address nat) (nat %balance))) : @parameter%getAdministrator : @storage
                 CAR;        # address : @parameter%getAdministrator : @storage
-                # sp.transfer(__s293.value, sp.tez(0), sp.snd(params)) # address : @parameter%getAdministrator : @storage
+                # sp.transfer(__s285.value, sp.tez(0), sp.snd(params)) # address : @parameter%getAdministrator : @storage
                 NIL operation; # list operation : address : @parameter%getAdministrator : @storage
                 DIG 2;      # @parameter%getAdministrator : list operation : address : @storage
                 CDR;        # contract address : list operation : address : @storage
@@ -276,7 +276,7 @@ code
                         PUSH int 46; # int : @parameter%getAllowance : @storage
                         FAILWITH;   # FAILED
                       }; # @some : @parameter%getAllowance : @storage
-                    # sp.transfer(__s294.value, sp.tez(0), sp.snd(params)) # @some : @parameter%getAllowance : @storage
+                    # sp.transfer(__s286.value, sp.tez(0), sp.snd(params)) # @some : @parameter%getAllowance : @storage
                     NIL operation; # list operation : @some : @parameter%getAllowance : @storage
                     DIG 2;      # @parameter%getAllowance : list operation : @some : @storage
                     CDR;        # contract nat : list operation : @some : @storage
@@ -335,7 +335,7 @@ code
                         FAILWITH;   # FAILED
                       }; # @some : @parameter%getBalance : pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (bool %paused) (nat %totalSupply))
                     CDR;        # nat : @parameter%getBalance : pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (bool %paused) (nat %totalSupply))
-                    # sp.transfer(__s295.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getBalance : pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (bool %paused) (nat %totalSupply))
+                    # sp.transfer(__s287.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getBalance : pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (bool %paused) (nat %totalSupply))
                     NIL operation; # list operation : nat : @parameter%getBalance : pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (bool %paused) (nat %totalSupply))
                     DIG 2;      # @parameter%getBalance : list operation : nat : pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (bool %paused) (nat %totalSupply))
                     CDR;        # contract nat : list operation : nat : pair (pair address (big_map address (pair (map %approvals address nat) (nat %balance)))) (pair (bool %paused) (nat %totalSupply))
@@ -358,7 +358,7 @@ code
                 DUP;        # @storage : @storage : @parameter%getTotalSupply
                 DUG 2;      # @storage : @parameter%getTotalSupply : @storage
                 GET 4;      # nat : @parameter%getTotalSupply : @storage
-                # sp.transfer(__s296.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getTotalSupply : @storage
+                # sp.transfer(__s288.value, sp.tez(0), sp.snd(params)) # nat : @parameter%getTotalSupply : @storage
                 NIL operation; # list operation : nat : @parameter%getTotalSupply : @storage
                 DIG 2;      # @parameter%getTotalSupply : list operation : nat : @storage
                 CDR;        # contract nat : list operation : nat : @storage
