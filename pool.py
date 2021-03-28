@@ -141,9 +141,7 @@ class PoolContract(Token.FA12):
     sp.set_type(unit, sp.TUnit)
 
     # Reward the user who called this transaction.
-    sp.trace(sp.amount)
     rewardAmount = sp.split_tokens(sp.amount, self.data.rewardPercent, 100)
-    sp.trace(rewardAmount)
     sp.send(sp.source, rewardAmount)
 
     # Invoke Dexter.
