@@ -50,9 +50,6 @@ class PoolContract(Token.FA12):
     # The governor of the pool.
     governorAddress = Addresses.GOVERNOR_ADDRESS,
 
-    # How much kUSD to reward a liquidator with.
-    rewardAmount = PRECISION, # 1 kUSD
-
     # How much of the payout to reward the liquidator with.
     rewardPercent = sp.nat(1), # 1%
 
@@ -116,8 +113,6 @@ class PoolContract(Token.FA12):
       tokenAddress = tokenAddress,
 
       # Configuration paramaters
-      # TODO(keefertaylor): remove reward amount
-      rewardAmount = rewardAmount,
       rewardPercent = rewardPercent,
 
       # Internal State
@@ -182,19 +177,6 @@ class PoolContract(Token.FA12):
       "isOven"
     ).open_some()
     sp.transfer(targetAddress, sp.mutez(0), isOvenHandle)
-
-    # Reward the sender for using the pool.
-    tokenTransferParam = sp.record(
-      from_ = sp.self_address,
-      to_ = sp.sender, 
-      value = self.data.rewardAmount
-    )
-    transferHandle = sp.contract(
-      sp.TRecord(from_ = sp.TAddress, to_ = sp.TAddress, value = sp.TNat).layout(("from_ as from", ("to_ as to", "value"))),
-      self.data.tokenAddress,
-      "transfer"
-    ).open_some()
-    sp.transfer(tokenTransferParam, sp.mutez(0), transferHandle)
 
     # Send a liquidation to the oven.
     liquidateHandle = sp.contract(
@@ -408,13 +390,13 @@ class PoolContract(Token.FA12):
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
     self.data.governorAddress = newGovernorAddress
 
-  # Update the reward amount.
+  # Update the reward percent.
   @sp.entry_point
-  def updateRewardAmount(self, newRewardAmount):
-    sp.set_type(newRewardAmount, sp.TNat)
+  def updateRewardPercent(self, newRewardPercent):
+    sp.set_type(newRewardPercent, sp.TNat)
 
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
-    self.data.rewardAmount = newRewardAmount
+    self.data.rewardPercent = newRewardPercent
 
   # Update the dexter pool address
   @sp.entry_point
@@ -571,10 +553,10 @@ if __name__ == "__main__":
     )            
 
   ################################################################
-  # updateRewardAmount
+  # updateRewardPercent
   ################################################################
 
-  @sp.add_test(name="updateRewardAmount - fails if sender is not governor")
+  @sp.add_test(name="updateRewardPercent - fails if sender is not governor")
   def test():
     scenario = sp.test_scenario()
 
@@ -582,16 +564,16 @@ if __name__ == "__main__":
     pool = PoolContract()
     scenario += pool
 
-    # WHEN updateRewardAmount is called by someone other than the governor
+    # WHEN updateRewardPercent is called by someone other than the governor
     # THEN the call will fail
     notGovernor = Addresses.NULL_ADDRESS
-    newRewardAmount = sp.nat(123)
-    scenario += pool.updateRewardAmount(newRewardAmount).run(
+    newRewardPercent = sp.nat(4)
+    scenario += pool.updateRewardPercent(newRewardPercent).run(
       sender = notGovernor,
       valid = False
     )
 
-  @sp.add_test(name="updateRewardAmount - can update reward amount")
+  @sp.add_test(name="updateRewardPercent - can update reward amount")
   def test():
     scenario = sp.test_scenario()
 
@@ -599,14 +581,14 @@ if __name__ == "__main__":
     pool = PoolContract()
     scenario += pool
 
-    # WHEN updateRewardAmount is called
-    newRewardAmount = sp.nat(123)
-    scenario += pool.updateRewardAmount(newRewardAmount).run(
+    # WHEN updateRewardPercent is called
+    newRewardPercent = sp.nat(4)
+    scenario += pool.updateRewardPercent(newRewardPercent).run(
       sender = Addresses.GOVERNOR_ADDRESS,
     )    
 
     # THEN the reward amount is updated.
-    scenario.verify(pool.data.rewardAmount == newRewardAmount)
+    scenario.verify(pool.data.rewardPercent == newRewardPercent)
 
   ################################################################
   # updateDexterAddress
@@ -763,53 +745,6 @@ if __name__ == "__main__":
       valid = False
     )
 
-  @sp.add_test(name="liquidate - rewards sender")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a fake oven registry
-    ovenRegistry = FakeOvenRegistry.FakeOvenRegistry(
-      isOvenValue = True
-    )
-    scenario += ovenRegistry
-
-    # AND a pool contract
-    rewardAmount = sp.nat(123)
-    pool = PoolContract(
-      ovenRegistryAddress = ovenRegistry.address,
-      rewardAmount = rewardAmount,
-      tokenAddress = token.address,
-    )
-    scenario += pool
-
-    # AND the pool has a bunch of tokens
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = sp.nat(10000000000)
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # AND a fake oven.
-    oven = FakeOven.FakeOven()
-    scenario += oven
-
-    # WHEN Alice liquidates an oven through the pool
-    scenario += pool.liquidate(oven.address).run(
-      sender = Addresses.ALICE_ADDRESS
-    )    
-
-    # THEN Alice receives kUSD.
-    scenario.verify(token.data.balances[Addresses.ALICE_ADDRESS].balance == rewardAmount)
-
   @sp.add_test(name="liquidate - liqudates oven")
   def test():
     scenario = sp.test_scenario()
@@ -827,10 +762,8 @@ if __name__ == "__main__":
     scenario += ovenRegistry
 
     # AND a pool contract
-    rewardAmount = sp.nat(123)
     pool = PoolContract(
       ovenRegistryAddress = ovenRegistry.address,
-      rewardAmount = rewardAmount,
       tokenAddress = token.address,
     )
     scenario += pool
