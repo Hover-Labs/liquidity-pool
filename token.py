@@ -95,10 +95,14 @@ class FA12(sp.Contract):
 
     # CHANGED: Hardcode this function to `False`. There is no administrator.
     def is_administrator(self, sender):
-        return False
+        return sp.bool(False)
+
+    # CHANGED: Hardcode this function to `False`. The contract is not pausable.
+    def is_paused(self):
+        return sp.bool(False)
 
     # CHANGED: Remove `[get,set]Administrator` functions. There are no administrators. 
-    # CHANGED: Remove `pause`
+    # CHANGED: Remove `setPause`
 
 if "templates" not in __name__:
     @sp.add_test(name = "FA12")
@@ -141,14 +145,15 @@ if "templates" not in __name__:
         scenario.verify(c1.data.balances[alice.address].balance == 10)
         scenario.h2("Alice tries to burn Bob token")
         scenario += c1.burn(address = bob.address, value = 1).run(sender = alice, valid = False)
-        scenario.h2("Admin pauses the contract and Alice cannot transfer anymore")
-        scenario += c1.setPause(True).run(sender = admin)
-        scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 4).run(sender = alice, valid = False)
-        scenario.verify(c1.data.balances[alice.address].balance == 10)
-        scenario.h2("Admin transfers while on pause")
+        # CHANGED: Remove test scenarios that deal with pause functionality.
+        # scenario.h2("Admin pauses the contract and Alice cannot transfer anymore")
+        # scenario += c1.setPause(True).run(sender = admin)
+        # scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 4).run(sender = alice, valid = False)
+        # scenario.verify(c1.data.balances[alice.address].balance == 10)
+        # scenario.h2("Admin transfers while on pause")
         scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 1).run(sender = admin)
-        scenario.h2("Admin unpauses the contract and transferts are allowed")
-        scenario += c1.setPause(False).run(sender = admin)
+        # scenario.h2("Admin unpauses the contract and transferts are allowed")
+        # scenario += c1.setPause(False).run(sender = admin)
         scenario.verify(c1.data.balances[alice.address].balance == 9)
         scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 1).run(sender = alice)
 
