@@ -95,6 +95,8 @@ class PoolContract(Token.FA12):
       tvalue = sp.TBytes            
     )
 
+    self.exception_optimization_level = "verify-or-line"
+
     self.init(
       # Parent class fields
       balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
