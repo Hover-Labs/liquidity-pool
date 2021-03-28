@@ -71,6 +71,8 @@ updateBalance(unit)
 ##  Deployment
 
 ```
+./compile.sh
+
 export NODE_URL=https://rpctest.tzbeta.net
 
 export DEXTER_ADDRESS=KT1AbYeDbjjcAnV1QK7EZUUdqku77CdkTuv6
