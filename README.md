@@ -14,15 +14,16 @@ LPs can redeem `dexterLkUSD` tokens by calling `redeem` at any time. The `dexter
 
 Any user may call `liquidate` with the address of an undercollateralized Kolibri oven. Provided that there is sufficient `kUSD` to liquidate the oven, and the oven is actually undercollateralized, then the following will process will happen:
 1. The Kolibri oven is liquidated
-2. The liquidation pool receives `XTZ` from the liquidation. This `XTZ` is immediately converted to `kUSD` on [Dexter](https://dexter.exchange).
-3. The user who called `liquidate` receives a payment from the pool (currently 1 `kUSD`) as a reward for using the pool to liquidate the oven, rather than selfishly liquidating it themsevles. 
+2. The liquidation pool receives `XTZ` from the liquidation. 
+3. Of the received `XTZ`, a percentage (currently 1%) is sent to the user who initiated the transaction to reward them for liquidating through the pool.
+4. The remaining `XTZ` is immediately converted to `kUSD` on [Dexter](https://dexter.exchange). This `kUSD` is distributed ratably to users in the liquidation pool.
 
 ## Governance
 
 A special contract, called the `governor` can make changes to the contract. Currently, the `governor` is a two of three multisig with an eight hour timelock. 
 
 Specifically, the following parameters are governable:
-- rewardAmount: The amount to pay users who liquidate ovens through the pool contract. 
+- rewardPercent: The percentage of received `XTZ` to pay the user who initiated the transaction as a reward for using the pool.
 - governorAddress: The governor may rotate itself to a new address (ex. a new multisig or a DAO)
 
 Additionally, a number of mundane plumbing parameters are also updatable in order to support upgrades in Kolibri, Dexter, and Tezos metadata standards.
@@ -39,10 +40,6 @@ This token contract is unaudited. If vulnerabilities are discovered, attackers m
 ### Market Manipulation Attacks
 
 The pool will blindly trade `XTZ` for `kUSD` at market rate on Dexter when the contract receives `XTZ`. Because of this, attackers may be able to manipulate exchange rates on Dexter to produce favorable trading conditions for themselves.
-
-### Dust Attacks
-
-TODO(keefertaylor): We can mitigate this attack by sending a percentage of the price.
 
 ## Interface
 
