@@ -14,12 +14,9 @@ Addresses = sp.import_script_from_url("file:./test-helpers/addresses.py")
 class FA12(sp.Contract):
     def __init__(
         self, 
-        administratorAddress = Addresses.ADMIN_ADDRESS,
         **extra_storage
     ):
         self.init(
-            administrator = administratorAddress,
-            paused = False,
             balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
             totalSupply = 0, 
             **extra_storage
@@ -95,28 +92,16 @@ class FA12(sp.Contract):
         self.data.balances[params.address].balance = sp.as_nat(self.data.balances[params.address].balance - params.value)
         self.data.totalSupply = sp.as_nat(self.data.totalSupply - params.value)
 
+    # CHANGED: Hardcode this function to `False`. There is no administrator.
     def is_administrator(self, sender):
-        return sender == self.data.administrator
+        return sp.bool(False)
 
-    @sp.entry_point
-    def setAdministrator(self, params):
-        sp.set_type(params, sp.TAddress)
-        sp.verify(self.is_administrator(sp.sender))
-        self.data.administrator = params
-
-    @sp.view(sp.TAddress)
-    def getAdministrator(self, params):
-        sp.set_type(params, sp.TUnit)
-        sp.result(self.data.administrator)
-
+    # CHANGED: Hardcode this function to `False`. The contract is not pausable.
     def is_paused(self):
-        return self.data.paused
+        return sp.bool(False)
 
-    @sp.entry_point
-    def setPause(self, params):
-        sp.set_type(params, sp.TBool)
-        sp.verify(self.is_administrator(sp.sender))
-        self.data.paused = params
+    # CHANGED: Remove `[get,set]Administrator` functions. There are no administrators. 
+    # CHANGED: Remove `setPause`
 
 if "templates" not in __name__:
     @sp.add_test(name = "FA12")
@@ -141,9 +126,10 @@ if "templates" not in __name__:
         scenario.h1("Entry points")
         scenario += c1
         scenario.h2("Admin mints a few coins")
-        scenario += c1.mint(address = alice.address, value = 12).run(sender = admin)
-        scenario += c1.mint(address = alice.address, value = 3).run(sender = admin)
-        scenario += c1.mint(address = alice.address, value = 3).run(sender = admin)
+        # CHANGED: Run from c1 rather than admin since admin no longer exists.
+        scenario += c1.mint(address = alice.address, value = 12).run(sender = c1.address)
+        scenario += c1.mint(address = alice.address, value = 3).run(sender = c1.address)
+        scenario += c1.mint(address = alice.address, value = 3).run(sender = c1.address)
         scenario.h2("Alice transfers to Bob")
         scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 4).run(sender = alice)
         scenario.verify(c1.data.balances[alice.address].balance == 14)
@@ -155,18 +141,24 @@ if "templates" not in __name__:
         scenario.h2("Bob tries to over-transfer from Alice")
         scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 4).run(sender = bob, valid = False)
         scenario.h2("Admin burns Bob token")
-        scenario += c1.burn(address = bob.address, value = 1).run(sender = admin)
+        # CHANGED: Run from c1 rather than admin since admin no longer exists.
+        scenario += c1.burn(address = bob.address, value = 1).run(sender = c1.address)
         scenario.verify(c1.data.balances[alice.address].balance == 10)
         scenario.h2("Alice tries to burn Bob token")
         scenario += c1.burn(address = bob.address, value = 1).run(sender = alice, valid = False)
-        scenario.h2("Admin pauses the contract and Alice cannot transfer anymore")
-        scenario += c1.setPause(True).run(sender = admin)
-        scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 4).run(sender = alice, valid = False)
-        scenario.verify(c1.data.balances[alice.address].balance == 10)
-        scenario.h2("Admin transfers while on pause")
-        scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 1).run(sender = admin)
-        scenario.h2("Admin unpauses the contract and transferts are allowed")
-        scenario += c1.setPause(False).run(sender = admin)
+        # CHANGED: Remove test scenarios that deal with pause functionality.
+        # scenario.h2("Admin pauses the contract and Alice cannot transfer anymore")
+        # scenario += c1.setPause(True).run(sender = admin)
+        # scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 4).run(sender = alice, valid = False)
+        # scenario.verify(c1.data.balances[alice.address].balance == 10)
+        # scenario.h2("Admin transfers while on pause")
+        
+        # CHANGED: Run from alice rather than admin since admin no longer exists.
+        scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 1).run(sender = alice)
+        
+        # CHANGED: Remove test scenarios that deal with pause functionality.
+        # scenario.h2("Admin unpauses the contract and transferts are allowed")
+        # scenario += c1.setPause(False).run(sender = admin)
         scenario.verify(c1.data.balances[alice.address].balance == 9)
         scenario += c1.transfer(from_ = alice.address, to_ = bob.address, value = 1).run(sender = alice)
 

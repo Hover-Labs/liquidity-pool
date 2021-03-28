@@ -97,8 +97,6 @@ class PoolContract(Token.FA12):
 
     self.init(
       # Parent class fields
-      administrator = administrator,
-      paused = paused,
       balances = sp.big_map(tvalue = sp.TRecord(approvals = sp.TMap(sp.TAddress, sp.TNat), balance = sp.TNat)), 
       totalSupply = 0,
 
@@ -1800,7 +1798,7 @@ if __name__ == "__main__":
         value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ADMIN_ADDRESS
+      sender = pool.address
     )
 
     # WHEN Alice withdraws from the contract
@@ -2751,7 +2749,7 @@ if __name__ == "__main__":
         value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ADMIN_ADDRESS
+      sender = pool.address
     )
 
     # AND the pool has tokens
@@ -2815,7 +2813,7 @@ if __name__ == "__main__":
         value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ADMIN_ADDRESS
+      sender = pool.address
     )
 
     # AND the pool has tokens
@@ -2876,7 +2874,7 @@ if __name__ == "__main__":
         value = aliceTokens * PRECISION
       )
     ).run(
-      sender = Addresses.ADMIN_ADDRESS
+      sender = pool.address
     )
 
     # AND the pool has tokens
