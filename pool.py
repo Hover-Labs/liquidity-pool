@@ -433,7 +433,6 @@ class PoolContract(Token.FA12):
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
     self.data.token_metadata[0] = params
 
-
 ################################################################
 ################################################################
 # TESTS
