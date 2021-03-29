@@ -2,7 +2,7 @@ import smartpy as sp
 
 Addresses = sp.import_script_from_url("file:./test-helpers/addresses.py")
 
-# A fake dexter pool that always exchanges 1 mutez for one token.
+# A fake quipuswap pool that always exchanges 1 mutez for one token.
 class FakePool(sp.Contract):
   def __init__(
     self,
@@ -17,13 +17,13 @@ class FakePool(sp.Contract):
     sp.set_type(unit, sp.TUnit)
     pass
 
-  # Param: (<to> (<min amount> <deadline>))
+  # Param: (<min amount> <to>)
   @sp.entry_point
-  def xtzToToken(self, param):
-    sp.set_type(param, sp.TPair(sp.TAddress, sp.TPair(sp.TNat, sp.TTimestamp)))
+  def tezToTokenPayment(self, param):
+    sp.set_type(param, sp.TPair(sp.TNat, sp.TAddress))
 
     # Extract destination.
-    destination = sp.fst(param)
+    destination = sp.snd(param)
 
     # Compute tokens to supply at 1 to 1.
     # This fancy statement converts mutez to a nat.

@@ -41,8 +41,8 @@ class PoolContract(Token.FA12):
     # The address of the token contract which will be deposited.
     tokenAddress = Addresses.TOKEN_ADDRESS,
 
-    # The address of the Dexter contract.
-    dexterAddress = Addresses.DEXTER_ADDRESS,
+    # The address of the Quipuswap contract.
+    quipuswapAddress = Addresses.QUIPUSWAP_ADDRESS,
     
     # The address of the Oven Registry contract.
     ovenRegistryAddress = Addresses.OVEN_REGISTRY_ADDRESS,
@@ -66,9 +66,9 @@ class PoolContract(Token.FA12):
 
     token_metadata = sp.map(
       l = {
-        "name": sp.bytes('0x446578746572204c69717569646174696e67206b555344'), # Dexter Liquidating kUSD
+        "name": sp.bytes('0x517569707573776170204c69717569646174696e67206b555344'), # Quipuswap Liquidating kUSD
         "decimals": sp.bytes('0x3138'), # 18
-        "symbol": sp.bytes('0x6465787465724c6b555344'), # dexterLkUSD
+        "symbol": sp.bytes('0x514c6b555344'), # QLkUSD
         "icon": sp.bytes('0x2068747470733a2f2f6b6f6c696272692d646174612e73332e616d617a6f6e6177732e636f6d2f6c6f676f2e706e67') # https://kolibri-data.s3.amazonaws.com/logo.png
       },
       tkey = sp.TString,
@@ -84,8 +84,8 @@ class PoolContract(Token.FA12):
     )
         
     # Hexadecimal representation of:
-    # { "name": "Dexter Liquidating kUSD",  "description": "kUSD Liquidation Pool tied to Dexter",  "authors": ["Hover Labs <hello@hover.engineering>"],  "homepage":  "https://kolibri.finance" }
-    metadata_data = sp.bytes('0x7b20226e616d65223a2022446578746572204c69717569646174696e67206b555344222c2020226465736372697074696f6e223a20226b555344204c69717569646174696f6e20506f6f6c207469656420746f20446578746572222c202022617574686f7273223a205b22486f766572204c616273203c68656c6c6f40686f7665722e656e67696e656572696e673e225d2c202022686f6d6570616765223a20202268747470733a2f2f6b6f6c696272692e66696e616e636522207d')
+    # { "name": "Quipuswap Liquidating kUSD",  "description": "kUSD Liquidation Pool tied to Quipuswap",  "authors": ["Hover Labs <hello@hover.engineering>"],  "homepage":  "https://kolibri.finance" }
+    metadata_data = sp.bytes('0x7b20226e616d65223a2022517569707573776170204c69717569646174696e67206b555344222c2020226465736372697074696f6e223a20226b555344204c69717569646174696f6e20506f6f6c207469656420746f20517569707573776170222c202022617574686f7273223a205b22486f766572204c616273203c68656c6c6f40686f7665722e656e67696e656572696e673e225d2c202022686f6d6570616765223a20202268747470733a2f2f6b6f6c696272692e66696e616e636522207d')
     metadata = sp.big_map(
       l = {
         "": sp.bytes('0x74657a6f732d73746f726167653a64617461'), # "tezos-storage:data"
@@ -95,7 +95,7 @@ class PoolContract(Token.FA12):
       tvalue = sp.TBytes            
     )
 
-    self.exception_optimization_level = "verify-or-line"
+    self.exception_optimization_level = "debug-message"
 
     self.init(
       # Parent class fields
@@ -107,7 +107,7 @@ class PoolContract(Token.FA12):
       token_metadata = token_metadata,
 
       # Addresses
-      dexterAddress = dexterAddress,
+      quipuswapAddress = quipuswapAddress,
       governorAddress = governorAddress,
       ovenRegistryAddress = ovenRegistryAddress,
       tokenAddress = tokenAddress,
@@ -130,7 +130,7 @@ class PoolContract(Token.FA12):
   # Liquidation Functions
   ################################################################    
 
-  # Accept XTZ and immediately swap them for kUSD on Dexter.
+  # Accept XTZ and immediately swap them for kUSD on Quipuswap.
   @sp.entry_point
   def default(self, unit):
     sp.set_type(unit, sp.TUnit)
@@ -139,24 +139,21 @@ class PoolContract(Token.FA12):
     rewardAmount = sp.split_tokens(sp.amount, self.data.rewardPercent, 100)
     sp.send(sp.source, rewardAmount)
 
-    # Invoke Dexter.
+    # Invoke Quipuswap.
     remainingBalance = sp.balance - rewardAmount
     tradeParam = (
+      1, # Min amount to receive
       sp.self_address, # To param
-      (
-        1, # Min tokens bought - Accept any trade
-        sp.now.add_seconds(sp.int(60 * 60)) # Deadline - Abitrarily set 1 hour in future
-      )
     )    
     tradeHandle = sp.contract(
-      sp.TPair(sp.TAddress, sp.TPair(sp.TNat, sp.TTimestamp)),
-      self.data.dexterAddress,
-      "xtzToToken"
+      sp.TPair(sp.TNat, sp.TAddress),
+      self.data.quipuswapAddress,
+      "tezToTokenPayment"
     ).open_some()
     sp.transfer(tradeParam, remainingBalance, tradeHandle)
 
     # Update token balance.
-    # NOTE: In BFS this is a no-op (the update will occur before Dexter has traded). If Florence protocol
+    # NOTE: In BFS this is a no-op (the update will occur before Quipuswap has traded). If Florence protocol
     # is accepted, then DFS call order will be used and this will update balance.
     updateHandle = sp.contract(
       sp.TUnit,
@@ -398,13 +395,13 @@ class PoolContract(Token.FA12):
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
     self.data.rewardPercent = newRewardPercent
 
-  # Update the dexter pool address
+  # Update the quipuswap pool address
   @sp.entry_point
-  def updateDexterAddress(self, newDexterAddress):
-    sp.set_type(newDexterAddress, sp.TAddress)
+  def updateQuipuswapAddress(self, newQuipuswapAddress):
+    sp.set_type(newQuipuswapAddress, sp.TAddress)
 
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
-    self.data.dexterAddress = newDexterAddress
+    self.data.quipuswapAddress = newQuipuswapAddress
   
   # Update the oven registry address
   @sp.entry_point
@@ -444,7 +441,7 @@ if __name__ == "__main__":
 
   Dummy = sp.import_script_from_url("file:./test-helpers/dummy.py")
   FA12 = sp.import_script_from_url("file:./test-helpers/fa12.py")
-  FakeDexter = sp.import_script_from_url("file:./test-helpers/fake-dexter-pool.py")
+  FakeQuipuswap = sp.import_script_from_url("file:./test-helpers/fake-quipuswap-pool.py")
   FakeOven = sp.import_script_from_url("file:./test-helpers/fake-oven.py")
   FakeOvenRegistry = sp.import_script_from_url("file:./test-helpers/fake-oven-registry.py")
 
@@ -591,10 +588,10 @@ if __name__ == "__main__":
     scenario.verify(pool.data.rewardPercent == newRewardPercent)
 
   ################################################################
-  # updateDexterAddress
+  # updateQuipuswapAddress
   ################################################################
 
-  @sp.add_test(name="updateDexterAddress - fails if sender is not governor")
+  @sp.add_test(name="updateQuipuswapAddress - fails if sender is not governor")
   def test():
     scenario = sp.test_scenario()
 
@@ -602,15 +599,15 @@ if __name__ == "__main__":
     pool = PoolContract()
     scenario += pool
 
-    # WHEN updateDexterAddress is called by someone other than the governor
+    # WHEN updateQuipuswapAddress is called by someone other than the governor
     # THEN the call will fail
     notGovernor = Addresses.NULL_ADDRESS
-    scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
+    scenario += pool.updateQuipuswapAddress(Addresses.ROTATED_ADDRESS).run(
       sender = notGovernor,
       valid = False
     )
 
-  @sp.add_test(name="updateDexterAddress - can rotate governor")
+  @sp.add_test(name="updateQuipuswapAddress - can rotate governor")
   def test():
     scenario = sp.test_scenario()
 
@@ -618,13 +615,13 @@ if __name__ == "__main__":
     pool = PoolContract()
     scenario += pool
 
-    # WHEN updateDexterAddress is called
-    scenario += pool.updateDexterAddress(Addresses.ROTATED_ADDRESS).run(
+    # WHEN updateQuipuswapAddress is called
+    scenario += pool.updateQuipuswapAddress(Addresses.ROTATED_ADDRESS).run(
       sender = Addresses.GOVERNOR_ADDRESS,
     )    
 
-    # THEN the dexter address is rotated.
-    scenario.verify(pool.data.dexterAddress == Addresses.ROTATED_ADDRESS)
+    # THEN the quipuswap address is rotated.
+    scenario.verify(pool.data.quipuswapAddress == Addresses.ROTATED_ADDRESS)
 
   ################################################################
   # updateOvenRegistryAddress
@@ -659,7 +656,7 @@ if __name__ == "__main__":
       sender = Addresses.GOVERNOR_ADDRESS,
     )    
 
-    # THEN the dexter address is rotated.
+    # THEN the oven registry address is rotated.
     scenario.verify(pool.data.ovenRegistryAddress == Addresses.ROTATED_ADDRESS)
 
   ################################################################
@@ -952,11 +949,11 @@ if __name__ == "__main__":
     )
     scenario += token
 
-    # AND a fake dexter contract
-    dexterPool = FakeDexter.FakePool(
+    # AND a fake quipuswap contract
+    quipuswapPool = FakeQuipuswap.FakePool(
       tokenAddress = token.address
     )
-    scenario += dexterPool
+    scenario += quipuswapPool
 
     # AND a dummy contract.
     dummy = Dummy.DummyContract()
@@ -964,15 +961,15 @@ if __name__ == "__main__":
 
     # AND a pool contract
     pool = PoolContract(
-      dexterAddress = dexterPool.address,
+      quipuswapAddress = quipuswapPool.address,
       tokenAddress = token.address,
     )
     scenario += pool
 
-    # AND the dexter pool has a bunch of tokens
+    # AND the quipuswap pool has a bunch of tokens
     scenario += token.mint(
       sp.record(
-        address = dexterPool.address,
+        address = quipuswapPool.address,
         value = sp.nat(10000000000)
       )
     ).run(
@@ -989,8 +986,8 @@ if __name__ == "__main__":
     # THEN the initiator received 1% of the payout.
     scenario.verify(dummy.balance == sp.mutez(2400))
     
-    # AND the amount is transferred to the dexter pool.
-    scenario.verify(dexterPool.balance == sp.mutez(240000 - 2400))
+    # AND the amount is transferred to the quipuswap pool.
+    scenario.verify(quipuswapPool.balance == sp.mutez(240000 - 2400))
 
     # AND the pool contract received a number of kUSD back.
     scenario.verify(token.data.balances[pool.address].balance == sp.as_nat((240000 - 2400)))
