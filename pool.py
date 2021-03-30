@@ -114,9 +114,6 @@ class PoolContract(Token.FA12):
 
       # Configuration paramaters
       rewardPercent = rewardPercent,
-
-      # Internal State
-      underlyingBalance = sp.nat(0),
       
       # State machinge
       state = state,
@@ -151,16 +148,6 @@ class PoolContract(Token.FA12):
       "tezToTokenPayment"
     ).open_some()
     sp.transfer(tradeParam, remainingBalance, tradeHandle)
-
-    # Update token balance.
-    # NOTE: In BFS this is a no-op (the update will occur before Quipuswap has traded). If Florence protocol
-    # is accepted, then DFS call order will be used and this will update balance.
-    updateHandle = sp.contract(
-      sp.TUnit,
-      sp.self_address,
-      "updateBalance"
-    ).open_some()
-    sp.transfer(sp.unit, sp.mutez(0), updateHandle)
 
   # Liquidate an oven.
   @sp.entry_point
@@ -227,9 +214,6 @@ class PoolContract(Token.FA12):
       newUnderlyingBalance = sp.local('newUnderlyingBalance', updatedBalance + tokensToDeposit.value)
       fractionOfPoolOwnership = sp.local('fractionOfPoolOwnership', (tokensToDeposit.value * PRECISION) / newUnderlyingBalance.value)
       newTokens.value = ((fractionOfPoolOwnership.value * self.data.totalSupply) / (sp.as_nat(PRECISION - fractionOfPoolOwnership.value)))
-
-    # Update underlying balance
-    self.data.underlyingBalance = updatedBalance + tokensToDeposit.value
 
     # Transfer tokens to this contract.
     depositor = sp.local('depositor', self.data.savedState_depositor.open_some())
@@ -300,9 +284,6 @@ class PoolContract(Token.FA12):
     fractionOfPoolOwnership = sp.local('fractionOfPoolOwnership', (tokensToRedeem.value * PRECISION) / self.data.totalSupply)
     tokensToReceive = sp.local('tokensToReceive', (fractionOfPoolOwnership.value * updatedBalance) / PRECISION)
 
-    # Debit underlying balance by the amount of tokens that will be sent
-    self.data.underlyingBalance = sp.as_nat(updatedBalance - tokensToReceive.value)
-
     # Burn the tokens being redeemed.
     redeemer = sp.local('redeemer', self.data.savedState_redeemer.open_some())
     tokenBurnParam = sp.record(
@@ -333,47 +314,6 @@ class PoolContract(Token.FA12):
     self.data.state = IDLE
     self.data.savedState_tokensToRedeem = sp.none
     self.data.savedState_redeemer = sp.none
-
-  ################################################################
-  # State Management
-  ################################################################
-
-  # Refresh the balance of the contract.
-  @sp.entry_point
-  def updateBalance(self, unit):
-    sp.set_type(unit, sp.TUnit)
-
-    # Validate state
-    sp.verify(self.data.state == IDLE, "bad state")
-
-    # Update state
-    self.data.state = WAITING_UPDATE_BALANCE
-
-    # Call token contract.
-    param = (sp.self_address, sp.self_entry_point(entry_point = 'updateBalance_callback'))
-    contractHandle = sp.contract(
-      sp.TPair(sp.TAddress, sp.TContract(sp.TNat)),
-      self.data.tokenAddress,
-      "getBalance",      
-    ).open_some()
-    sp.transfer(param, sp.mutez(0), contractHandle)
-
-  # Private callback for `updateBalance`.
-  @sp.entry_point
-  def updateBalance_callback(self, balance):
-    sp.set_type(balance, sp.TNat)
-
-    # Validate sender
-    sp.verify(sp.sender == self.data.tokenAddress, "bad sender")
-
-    # Validate state
-    sp.verify(self.data.state == WAITING_UPDATE_BALANCE, "bad state")
-
-    # Update state
-    self.data.state = IDLE
-
-    # Update balance.
-    self.data.underlyingBalance = balance
 
   ################################################################
   # Governance
@@ -787,155 +727,6 @@ if __name__ == "__main__":
     scenario.verify(oven.data.isLiquidated == True)
 
   ################################################################
-  # updateBalance
-  ################################################################
-
-  @sp.add_test(name="updateBalance - updates balance")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract
-    pool = PoolContract(
-      tokenAddress = token.address
-    )
-    scenario += pool
-
-    # AnD the contract receives some tokens.
-    additionalTokens = 10
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = additionalTokens
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # WHEN the contract updates it's balance.
-    scenario += pool.updateBalance(sp.unit)
-
-    # THEN the balance is correct.
-    scenario.verify(pool.data.underlyingBalance == additionalTokens)
-
-  @sp.add_test(name="updateBalance - fails if not in idle state")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract not in the idle state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = WAITING_UPDATE_BALANCE,
-    )
-    scenario += pool
-
-    # AND the contract receives some tokens.
-    additionalTokens = 10
-    scenario += token.mint(
-      sp.record(
-        address = pool.address,
-        value = additionalTokens
-      )
-    ).run(
-      sender = Addresses.ADMIN_ADDRESS
-    )
-
-    # WHEN the contract updates it's balance.
-    # THEN it fails
-    scenario += pool.updateBalance(sp.unit).run(
-      valid = False
-    )
-
-  ################################################################
-  # updateBalance_callback
-  ################################################################
-
-  @sp.add_test(name="updateBalance_callback - updates balance")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract in a WAITING_UPDATE_BALANCE state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = WAITING_UPDATE_BALANCE
-    )
-    scenario += pool
-
-    # WHEN the callback is called
-    newBalance = sp.nat(15)
-    scenario += pool.updateBalance_callback(newBalance).run(
-      sender = token.address
-    )
-
-    # THEN the balance is correct.
-    scenario.verify(pool.data.underlyingBalance == newBalance)    
-
-  @sp.add_test(name="updateBalance_callback - fails if not called from token contract")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract in a WAITING_UPDATE_BALANCE state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = WAITING_UPDATE_BALANCE
-    )
-    scenario += pool
-
-    # WHEN the callback is called
-    newBalance = sp.nat(15)
-    scenario += pool.updateBalance_callback(newBalance).run(
-      sender = Addresses.NULL_ADDRESS,
-      valid = False
-    )
-
-  @sp.add_test(name="updateBalance_callback - fails if not called from IDLE state")
-  def test():
-    scenario = sp.test_scenario()
-
-    # GIVEN a token contract
-    token = FA12.FA12(
-      admin = Addresses.ADMIN_ADDRESS
-    )
-    scenario += token
-
-    # AND a pool contract in a IDLE state
-    pool = PoolContract(
-      tokenAddress = token.address,
-      state = IDLE
-    )
-    scenario += pool
-
-    # WHEN the callback is called
-    newBalance = sp.nat(15)
-    scenario += pool.updateBalance_callback(newBalance).run(
-      sender = token.address,
-      valid = False
-    )    
-
-  ################################################################
   # default
   ################################################################
 
@@ -1148,7 +939,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == aliceTokens)
-    scenario.verify(pool.data.underlyingBalance == aliceTokens)
 
   @sp.add_test(name="deposit - can deposit from two accounts")
   def test():
@@ -1234,7 +1024,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == aliceTokens + bobTokens)
-    scenario.verify(pool.data.underlyingBalance == aliceTokens + bobTokens)
 
   @sp.add_test(name="deposit - can deposit from two accounts - reversed")
   def test():
@@ -1320,7 +1109,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == aliceTokens + bobTokens)
-    scenario.verify(pool.data.underlyingBalance == aliceTokens + bobTokens)
 
   @sp.add_test(name="deposit - successfully mints LP tokens after additional liquidity is deposited in the pool")
   def test():
@@ -1425,9 +1213,6 @@ if __name__ == "__main__":
       sender = Addresses.ADMIN_ADDRESS
     )
 
-    # AND the contract updates it's balance.
-    scenario += pool.updateBalance(sp.unit)
-
     # AND Charlie joins after the liquidity is added
     scenario += pool.deposit(
       charlieTokens
@@ -1440,7 +1225,6 @@ if __name__ == "__main__":
 
     # AND the pool has the right number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(10 + 40 + 10 + 60))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(10 + 40 + 10 + 60))
 
     # AND Charlie has the right number of LP tokens.
     scenario.verify(pool.data.balances[Addresses.CHARLIE_ADDRESS].balance == 50 * PRECISION)
@@ -1548,9 +1332,6 @@ if __name__ == "__main__":
       sender = Addresses.ADMIN_ADDRESS
     )
 
-    # AND the contract updates it's balance.
-    scenario += pool.updateBalance(sp.unit)
-
     # AND Charlie joins after the liquidity is added
     scenario += pool.deposit(
       charlieTokens
@@ -1563,7 +1344,6 @@ if __name__ == "__main__":
 
     # AND the pool has the right number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(10 + 40 + 10 + 20))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(10 + 40 + 10 + 20))
 
     # AND Charlie has the right number of LP tokens.
     scenario.verify(pool.data.balances[Addresses.CHARLIE_ADDRESS].balance == 16666666666666666666)
@@ -1925,7 +1705,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(0))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(0))
 
   @sp.add_test(name="redeem - can redeem from two accounts")
   def test():
@@ -2018,7 +1797,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == bobTokens)
-    scenario.verify(pool.data.underlyingBalance == bobTokens)
 
     # WHEN Bob withdraws his tokens
     scenario += pool.redeem(
@@ -2040,7 +1818,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(0))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(0))
 
   @sp.add_test(name="redeem - can redeem from two accounts - reversed")
   def test():
@@ -2133,7 +1910,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == aliceTokens)
-    scenario.verify(pool.data.underlyingBalance == aliceTokens)
 
     # WHEN Alice withdraws her tokens
     scenario += pool.redeem(
@@ -2155,7 +1931,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(0))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(0))
 
   @sp.add_test(name="redeem - can redeem partially from two accounts")
   def test():
@@ -2248,7 +2023,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == bobTokens + (aliceTokens / 2))
-    scenario.verify(pool.data.underlyingBalance == bobTokens + (aliceTokens / 2))
 
     # WHEN Bob withdraws a quarter of his tokens
     scenario += pool.redeem(
@@ -2274,7 +2048,6 @@ if __name__ == "__main__":
     # 1/2 of alice tokens + 3/4 of bob tokens + 1 token rounding error = 5 + 30 + 1 = 36
     expectedRemainingTokens = sp.nat(36)
     scenario.verify(token.data.balances[pool.address].balance == expectedRemainingTokens) 
-    scenario.verify(pool.data.underlyingBalance == expectedRemainingTokens)
 
   @sp.add_test(name="redeem - can redeem from two accounts with liquidity added")
   def test():
@@ -2358,9 +2131,6 @@ if __name__ == "__main__":
       sender = Addresses.ADMIN_ADDRESS
     )
 
-    # AND the contract updates it's balance.
-    scenario += pool.updateBalance(sp.unit)
-
     # WHEN Alice withdraws her tokens
     scenario += pool.redeem(
       aliceTokens * PRECISION
@@ -2384,7 +2154,6 @@ if __name__ == "__main__":
     # AND the pool has possession of the correct number of tokens.
     # 10 tokens were added to the pool - 2 tokens alice withdrew = 8 additional tokens remaining.
     scenario.verify(token.data.balances[pool.address].balance == bobTokens + sp.as_nat(additionalTokens - additionalTokensForAlice))
-    scenario.verify(pool.data.underlyingBalance == bobTokens + sp.as_nat(additionalTokens - additionalTokensForAlice))
 
     # WHEN Bob withdraws his tokens
     scenario += pool.redeem(
@@ -2408,7 +2177,6 @@ if __name__ == "__main__":
 
     # AND the pool has possession of the correct number of tokens.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(0))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(0))
 
   @sp.add_test(name="redeem - can redeem correctly from accounts joining after liquidity is added")
   def test():
@@ -2513,9 +2281,6 @@ if __name__ == "__main__":
       sender = Addresses.ADMIN_ADDRESS
     )
 
-    # AND the contract updates it's balance.
-    scenario += pool.updateBalance(sp.unit)
-
     # AND Charlie joins after the liquidity is added
     scenario += pool.deposit(
       charlieTokens
@@ -2550,7 +2315,6 @@ if __name__ == "__main__":
 
     # AND the pool has no tokens left in it.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(0))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(0))
 
     # AND Balances are expected
     # NOTE: there are minor rounding errors on withdrawals.
@@ -2661,9 +2425,6 @@ if __name__ == "__main__":
       sender = Addresses.ADMIN_ADDRESS
     )
 
-    # AND the contract updates it's balance.
-    scenario += pool.updateBalance(sp.unit)
-
     # AND Charlie joins after the liquidity is added
     scenario += pool.deposit(
       charlieTokens
@@ -2698,7 +2459,6 @@ if __name__ == "__main__":
 
     # AND the pool has no tokens left in it.
     scenario.verify(token.data.balances[pool.address].balance == sp.nat(0))
-    scenario.verify(pool.data.underlyingBalance == sp.nat(0))
 
     # AND Balances are expected
     # NOTE: there are minor rounding errors on withdrawals.
