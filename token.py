@@ -28,9 +28,12 @@ class FA12(sp.Contract):
         sp.verify(self.is_administrator(sp.sender) |
             (~self.is_paused() &
                 ((params.from_ == sp.sender) |
-                 (self.data.balances[params.from_].approvals[sp.sender] >= params.value))))
+                 (self.data.balances[params.from_].approvals[sp.sender] >= params.value))), "NOT_ALLOWED")
+        # CHANGED: Add from address as well.
+        self.addAddressIfNecessary(params.from_)
+
         self.addAddressIfNecessary(params.to_)
-        sp.verify(self.data.balances[params.from_].balance >= params.value)
+        sp.verify(self.data.balances[params.from_].balance >= params.value, "LOW_BALANCE")
         self.data.balances[params.from_].balance = sp.as_nat(self.data.balances[params.from_].balance - params.value)
         self.data.balances[params.to_].balance += params.value
         sp.if (params.from_ != sp.sender) & (~self.is_administrator(sp.sender)):
@@ -44,9 +47,9 @@ class FA12(sp.Contract):
         # before you have a balance.
         self.addAddressIfNecessary(sp.sender)
 
-        sp.verify(~self.is_paused())
+        sp.verify(~self.is_paused(), "PAUSED")
         alreadyApproved = self.data.balances[sp.sender].approvals.get(params.spender, 0)
-        sp.verify((alreadyApproved == 0) | (params.value == 0), "UnsafeAllowanceChange")
+        sp.verify((alreadyApproved == 0) | (params.value == 0), "UNSAFE_ALLOWANCE_CHANGE")
         self.data.balances[sp.sender].approvals[params.spender] = params.value
 
     def addAddressIfNecessary(self, address):
@@ -63,7 +66,12 @@ class FA12(sp.Contract):
 
     @sp.view(sp.TNat)
     def getAllowance(self, params):
-        sp.result(self.data.balances[params.owner].approvals[params.spender])
+        # CHANGED: Add address if needed. This fixes a bug in our tests for checkpoints where you cannot approve
+        # before you have a balance.
+        self.addAddressIfNecessary(sp.sender)
+
+        # CHANGED: Default to zero to prevent bad map accesses
+        sp.result(self.data.balances[params.owner].approvals.get(params.spender, sp.nat(0)))
 
     @sp.view(sp.TNat)
     def getTotalSupply(self, params):
@@ -75,7 +83,7 @@ class FA12(sp.Contract):
         sp.set_type(params, sp.TRecord(address = sp.TAddress, value = sp.TNat))
 
         # CHANGED: Allow sender to be this contract.
-        sp.verify((self.is_administrator(sp.sender)) | (sp.sender == sp.self_address))
+        sp.verify((self.is_administrator(sp.sender)) | (sp.sender == sp.self_address), "NOT_ALLOWED")
 
         self.addAddressIfNecessary(params.address)
         self.data.balances[params.address].balance += params.value
@@ -86,9 +94,9 @@ class FA12(sp.Contract):
         sp.set_type(params, sp.TRecord(address = sp.TAddress, value = sp.TNat))
 
         # CHANGED: Allow sender to be this contract.
-        sp.verify((self.is_administrator(sp.sender)) | (sp.sender == sp.self_address))
+        sp.verify((self.is_administrator(sp.sender)) | (sp.sender == sp.self_address), "NOT_ALLOWED")
 
-        sp.verify(self.data.balances[params.address].balance >= params.value)
+        sp.verify(self.data.balances[params.address].balance >= params.value, "LOW_BALANCE")
         self.data.balances[params.address].balance = sp.as_nat(self.data.balances[params.address].balance - params.value)
         self.data.totalSupply = sp.as_nat(self.data.totalSupply - params.value)
 
