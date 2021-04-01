@@ -29,6 +29,7 @@ class FA12(sp.Contract):
             (~self.is_paused() &
                 ((params.from_ == sp.sender) |
                  (self.data.balances[params.from_].approvals[sp.sender] >= params.value))), "NOT_ALLOWED")
+
         # CHANGED: Add from address as well.
         self.addAddressIfNecessary(params.from_)
 
