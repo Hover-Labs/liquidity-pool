@@ -53,7 +53,7 @@ class PoolContract(Token.FA12):
     # How much of the payout to reward the liquidator with.
     rewardPercent = sp.nat(1), # 1%
 
-    # The block which rewards can bec changed after.
+    # The block which rewards can be changed after.
     rewardChangeAllowedLevel = sp.nat(0),
 
     # The initial state of the state machine.
