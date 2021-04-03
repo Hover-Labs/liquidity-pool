@@ -321,7 +321,7 @@ code
                   }
                   {
                     # == deposit ==
-                    # sp.verify(self.data.state == 0, message = 'bad state') # @parameter%deposit : @storage
+                    # sp.verify(self.data.state == 0, message = 'BAD_STATE') # @parameter%deposit : @storage
                     PUSH int 0; # int : @parameter%deposit : @storage
                     DUP 3;      # @storage : int : @parameter%deposit : @storage
                     CDR;        # pair (pair (pair (option %savedState_depositor address) (option %savedState_redeemer address)) (pair (option %savedState_tokensToDeposit nat) (option %savedState_tokensToRedeem nat))) (pair (pair (int %state) (address %tokenAddress)) (pair (big_map %token_metadata nat (pair nat (map string bytes))) (nat %totalSupply))) : int : @parameter%deposit : @storage
@@ -396,7 +396,7 @@ code
                   {
                     SWAP;       # @storage : @parameter%deposit_callback
                     # == deposit_callback ==
-                    # sp.verify(sp.sender == self.data.tokenAddress, message = 'bad sender') # @storage : @parameter%deposit_callback
+                    # sp.verify(sp.sender == self.data.tokenAddress, message = 'BAD_SENDER') # @storage : @parameter%deposit_callback
                     DUP;        # @storage : @storage : @parameter%deposit_callback
                     DUG 2;      # @storage : @parameter%deposit_callback : @storage
                     CDR;        # pair (pair (pair (option %savedState_depositor address) (option %savedState_redeemer address)) (pair (option %savedState_tokensToDeposit nat) (option %savedState_tokensToRedeem nat))) (pair (pair (int %state) (address %tokenAddress)) (pair (big_map %token_metadata nat (pair nat (map string bytes))) (nat %totalSupply))) : @parameter%deposit_callback : @storage
@@ -412,7 +412,7 @@ code
                         PUSH (pair string int) (Pair "verify" 209); # pair string int : @parameter%deposit_callback : @storage
                         FAILWITH;   # FAILED
                       }; # @parameter%deposit_callback : @storage
-                    # sp.verify(self.data.state == 3, message = 'bad state') # @parameter%deposit_callback : @storage
+                    # sp.verify(self.data.state == 3, message = 'BAD_STATE') # @parameter%deposit_callback : @storage
                     PUSH int 3; # int : @parameter%deposit_callback : @storage
                     DUP 3;      # @storage : int : @parameter%deposit_callback : @storage
                     CDR;        # pair (pair (pair (option %savedState_depositor address) (option %savedState_redeemer address)) (pair (option %savedState_tokensToDeposit nat) (option %savedState_tokensToRedeem nat))) (pair (pair (int %state) (address %tokenAddress)) (pair (big_map %token_metadata nat (pair nat (map string bytes))) (nat %totalSupply))) : int : @parameter%deposit_callback : @storage
@@ -869,7 +869,7 @@ code
                   }
                   {
                     # == redeem ==
-                    # sp.verify(self.data.state == 0, message = 'bad state') # @parameter%redeem : @storage
+                    # sp.verify(self.data.state == 0, message = 'BAD_STATE') # @parameter%redeem : @storage
                     PUSH int 0; # int : @parameter%redeem : @storage
                     DUP 3;      # @storage : int : @parameter%redeem : @storage
                     CDR;        # pair (pair (pair (option %savedState_depositor address) (option %savedState_redeemer address)) (pair (option %savedState_tokensToDeposit nat) (option %savedState_tokensToRedeem nat))) (pair (pair (int %state) (address %tokenAddress)) (pair (big_map %token_metadata nat (pair nat (map string bytes))) (nat %totalSupply))) : int : @parameter%redeem : @storage
@@ -943,7 +943,7 @@ code
                   {
                     SWAP;       # @storage : @parameter%redeem_callback
                     # == redeem_callback ==
-                    # sp.verify(sp.sender == self.data.tokenAddress, message = 'bad sender') # @storage : @parameter%redeem_callback
+                    # sp.verify(sp.sender == self.data.tokenAddress, message = 'BAD_SENDER') # @storage : @parameter%redeem_callback
                     DUP;        # @storage : @storage : @parameter%redeem_callback
                     DUG 2;      # @storage : @parameter%redeem_callback : @storage
                     CDR;        # pair (pair (pair (option %savedState_depositor address) (option %savedState_redeemer address)) (pair (option %savedState_tokensToDeposit nat) (option %savedState_tokensToRedeem nat))) (pair (pair (int %state) (address %tokenAddress)) (pair (big_map %token_metadata nat (pair nat (map string bytes))) (nat %totalSupply))) : @parameter%redeem_callback : @storage
@@ -959,7 +959,7 @@ code
                         PUSH (pair string int) (Pair "verify" 281); # pair string int : @parameter%redeem_callback : @storage
                         FAILWITH;   # FAILED
                       }; # @parameter%redeem_callback : @storage
-                    # sp.verify(self.data.state == 2, message = 'bad state') # @parameter%redeem_callback : @storage
+                    # sp.verify(self.data.state == 2, message = 'BAD_STATE') # @parameter%redeem_callback : @storage
                     PUSH int 2; # int : @parameter%redeem_callback : @storage
                     DUP 3;      # @storage : int : @parameter%redeem_callback : @storage
                     CDR;        # pair (pair (pair (option %savedState_depositor address) (option %savedState_redeemer address)) (pair (option %savedState_tokensToDeposit nat) (option %savedState_tokensToRedeem nat))) (pair (pair (int %state) (address %tokenAddress)) (pair (big_map %token_metadata nat (pair nat (map string bytes))) (nat %totalSupply))) : int : @parameter%redeem_callback : @storage
@@ -1394,7 +1394,7 @@ code
                       {
                         SWAP;       # @storage : @parameter%updateContractMetadata
                         # == updateContractMetadata ==
-                        # sp.verify(sp.sender == self.data.governorAddress, message = 'not governor') # @storage : @parameter%updateContractMetadata
+                        # sp.verify(sp.sender == self.data.governorAddress, message = 'NOT_GOVERNOR') # @storage : @parameter%updateContractMetadata
                         DUP;        # @storage : @storage : @parameter%updateContractMetadata
                         DUG 2;      # @storage : @parameter%updateContractMetadata : @storage
                         CAR;        # pair (pair (big_map %balances address (pair (map %approvals address nat) (nat %balance))) (pair (address %governorAddress) (big_map %metadata string bytes))) (pair (pair (address %ovenRegistryAddress) (address %quipuswapAddress)) (pair (nat %rewardChangeAllowedLevel) (nat %rewardPercent))) : @parameter%updateContractMetadata : @storage
@@ -1442,7 +1442,7 @@ code
                   {
                     SWAP;       # @storage : @parameter%updateGovernorAddress
                     # == updateGovernorAddress ==
-                    # sp.verify(sp.sender == self.data.governorAddress, message = 'not governor') # @storage : @parameter%updateGovernorAddress
+                    # sp.verify(sp.sender == self.data.governorAddress, message = 'NOT_GOVERNOR') # @storage : @parameter%updateGovernorAddress
                     DUP;        # @storage : @storage : @parameter%updateGovernorAddress
                     DUG 2;      # @storage : @parameter%updateGovernorAddress : @storage
                     CAR;        # pair (pair (big_map %balances address (pair (map %approvals address nat) (nat %balance))) (pair (address %governorAddress) (big_map %metadata string bytes))) (pair (pair (address %ovenRegistryAddress) (address %quipuswapAddress)) (pair (nat %rewardChangeAllowedLevel) (nat %rewardPercent))) : @parameter%updateGovernorAddress : @storage
@@ -1475,7 +1475,7 @@ code
                   {
                     SWAP;       # @storage : @parameter%updateOvenRegistryAddress
                     # == updateOvenRegistryAddress ==
-                    # sp.verify(sp.sender == self.data.governorAddress, message = 'not governor') # @storage : @parameter%updateOvenRegistryAddress
+                    # sp.verify(sp.sender == self.data.governorAddress, message = 'NOT_GOVERNOR') # @storage : @parameter%updateOvenRegistryAddress
                     DUP;        # @storage : @storage : @parameter%updateOvenRegistryAddress
                     DUG 2;      # @storage : @parameter%updateOvenRegistryAddress : @storage
                     CAR;        # pair (pair (big_map %balances address (pair (map %approvals address nat) (nat %balance))) (pair (address %governorAddress) (big_map %metadata string bytes))) (pair (pair (address %ovenRegistryAddress) (address %quipuswapAddress)) (pair (nat %rewardChangeAllowedLevel) (nat %rewardPercent))) : @parameter%updateOvenRegistryAddress : @storage
@@ -1511,7 +1511,7 @@ code
                   {
                     SWAP;       # @storage : @parameter%updateQuipuswapAddress
                     # == updateQuipuswapAddress ==
-                    # sp.verify(sp.sender == self.data.governorAddress, message = 'not governor') # @storage : @parameter%updateQuipuswapAddress
+                    # sp.verify(sp.sender == self.data.governorAddress, message = 'NOT_GOVERNOR') # @storage : @parameter%updateQuipuswapAddress
                     DUP;        # @storage : @storage : @parameter%updateQuipuswapAddress
                     DUG 2;      # @storage : @parameter%updateQuipuswapAddress : @storage
                     CAR;        # pair (pair (big_map %balances address (pair (map %approvals address nat) (nat %balance))) (pair (address %governorAddress) (big_map %metadata string bytes))) (pair (pair (address %ovenRegistryAddress) (address %quipuswapAddress)) (pair (nat %rewardChangeAllowedLevel) (nat %rewardPercent))) : @parameter%updateQuipuswapAddress : @storage
@@ -1547,7 +1547,7 @@ code
                       {
                         SWAP;       # @storage : @parameter%updateRewardPercent
                         # == updateRewardPercent ==
-                        # sp.verify(sp.sender == self.data.governorAddress, message = 'not governor') # @storage : @parameter%updateRewardPercent
+                        # sp.verify(sp.sender == self.data.governorAddress, message = 'NOT_GOVERNOR') # @storage : @parameter%updateRewardPercent
                         DUP;        # @storage : @storage : @parameter%updateRewardPercent
                         DUG 2;      # @storage : @parameter%updateRewardPercent : @storage
                         CAR;        # pair (pair (big_map %balances address (pair (map %approvals address nat) (nat %balance))) (pair (address %governorAddress) (big_map %metadata string bytes))) (pair (pair (address %ovenRegistryAddress) (address %quipuswapAddress)) (pair (nat %rewardChangeAllowedLevel) (nat %rewardPercent))) : @parameter%updateRewardPercent : @storage
@@ -1600,7 +1600,7 @@ code
                       {
                         SWAP;       # @storage : @parameter%updateTokenMetadata
                         # == updateTokenMetadata ==
-                        # sp.verify(sp.sender == self.data.governorAddress, message = 'not governor') # @storage : @parameter%updateTokenMetadata
+                        # sp.verify(sp.sender == self.data.governorAddress, message = 'NOT_GOVERNOR') # @storage : @parameter%updateTokenMetadata
                         DUP;        # @storage : @storage : @parameter%updateTokenMetadata
                         DUG 2;      # @storage : @parameter%updateTokenMetadata : @storage
                         CAR;        # pair (pair (big_map %balances address (pair (map %approvals address nat) (nat %balance))) (pair (address %governorAddress) (big_map %metadata string bytes))) (pair (pair (address %ovenRegistryAddress) (address %quipuswapAddress)) (pair (nat %rewardChangeAllowedLevel) (nat %rewardPercent))) : @parameter%updateTokenMetadata : @storage

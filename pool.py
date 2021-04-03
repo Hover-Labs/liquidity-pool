@@ -184,7 +184,7 @@ class PoolContract(Token.FA12):
     sp.set_type(tokensToDeposit, sp.TNat)
 
     # Validate state
-    sp.verify(self.data.state == IDLE, "bad state")
+    sp.verify(self.data.state == IDLE, "BAD_STATE")
 
     # Save state
     self.data.state = WAITING_DEPOSIT
@@ -206,10 +206,10 @@ class PoolContract(Token.FA12):
     sp.set_type(updatedBalance, sp.TNat)
 
     # Validate sender
-    sp.verify(sp.sender == self.data.tokenAddress, "bad sender")
+    sp.verify(sp.sender == self.data.tokenAddress, "BAD_SENDER")
 
     # Validate state
-    sp.verify(self.data.state == WAITING_DEPOSIT, "bad state")
+    sp.verify(self.data.state == WAITING_DEPOSIT, "BAD_STATE")
 
     # Calculate the tokens to issue.
     tokensToDeposit = sp.local('tokensToDeposit', self.data.savedState_tokensToDeposit.open_some())
@@ -256,7 +256,7 @@ class PoolContract(Token.FA12):
     sp.set_type(tokensToRedeem, sp.TNat)
 
     # Validate state
-    sp.verify(self.data.state == IDLE, "bad state")
+    sp.verify(self.data.state == IDLE, "BAD_STATE")
 
     # Save state
     self.data.state = WAITING_REDEEM
@@ -278,10 +278,10 @@ class PoolContract(Token.FA12):
     sp.set_type(updatedBalance, sp.TNat)
 
     # Validate sender
-    sp.verify(sp.sender == self.data.tokenAddress, "bad sender")
+    sp.verify(sp.sender == self.data.tokenAddress, "BAD_SENDER")
 
     # Validate state
-    sp.verify(self.data.state == WAITING_REDEEM, "bad state")
+    sp.verify(self.data.state == WAITING_REDEEM, "BAD_STATE")
 
     # Calculate tokens to receive.
     tokensToRedeem = sp.local('tokensToRedeem', self.data.savedState_tokensToRedeem.open_some())
@@ -328,7 +328,7 @@ class PoolContract(Token.FA12):
   def updateGovernorAddress(self, newGovernorAddress):
     sp.set_type(newGovernorAddress, sp.TAddress)
 
-    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    sp.verify(sp.sender == self.data.governorAddress, "NOT_GOVERNOR")
     self.data.governorAddress = newGovernorAddress
 
   # Update the reward percent.
@@ -336,7 +336,7 @@ class PoolContract(Token.FA12):
   def updateRewardPercent(self, newRewardPercent):
     sp.set_type(newRewardPercent, sp.TNat)
 
-    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    sp.verify(sp.sender == self.data.governorAddress, "NOT_GOVERNOR")
     sp.verify(sp.level >= self.data.rewardChangeAllowedLevel, "TOO_SOON")
 
     self.data.rewardPercent = newRewardPercent
@@ -346,7 +346,7 @@ class PoolContract(Token.FA12):
   def updateQuipuswapAddress(self, newQuipuswapAddress):
     sp.set_type(newQuipuswapAddress, sp.TAddress)
 
-    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    sp.verify(sp.sender == self.data.governorAddress, "NOT_GOVERNOR")
     self.data.quipuswapAddress = newQuipuswapAddress
   
   # Update the oven registry address
@@ -354,7 +354,7 @@ class PoolContract(Token.FA12):
   def updateOvenRegistryAddress(self, newOvenRegistryAddress):
     sp.set_type(newOvenRegistryAddress, sp.TAddress)
 
-    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    sp.verify(sp.sender == self.data.governorAddress, "NOT_GOVERNOR")
     self.data.ovenRegistryAddress = newOvenRegistryAddress    
 
   # Update contract metadata
@@ -362,7 +362,7 @@ class PoolContract(Token.FA12):
   def updateContractMetadata(self, params):	
     sp.set_type(params, sp.TPair(sp.TString, sp.TBytes))	
 
-    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    sp.verify(sp.sender == self.data.governorAddress, "NOT_GOVERNOR")
 
     key = sp.fst(params)
     value = sp.snd(params)	
@@ -373,7 +373,7 @@ class PoolContract(Token.FA12):
   def updateTokenMetadata(self, params):	
     sp.set_type(params, sp.TPair(sp.TNat, sp.TMap(sp.TString, sp.TBytes)))	
 
-    sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    sp.verify(sp.sender == self.data.governorAddress, "NOT_GOVERNOR")
     self.data.token_metadata[0] = params
 
 ################################################################
