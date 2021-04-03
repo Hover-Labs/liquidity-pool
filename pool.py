@@ -53,6 +53,9 @@ class PoolContract(Token.FA12):
     # How much of the payout to reward the liquidator with.
     rewardPercent = sp.nat(1), # 1%
 
+    # The block which rewards can bec changed after.
+    rewardChangeAllowedLevel = sp.nat(0),
+
     # The initial state of the state machine.
     state = IDLE,
 
@@ -114,6 +117,7 @@ class PoolContract(Token.FA12):
 
       # Configuration paramaters
       rewardPercent = rewardPercent,
+      rewardChangeAllowedLevel = rewardChangeAllowedLevel,
       
       # State machinge
       state = state,
@@ -333,6 +337,8 @@ class PoolContract(Token.FA12):
     sp.set_type(newRewardPercent, sp.TNat)
 
     sp.verify(sp.sender == self.data.governorAddress, "not governor")
+    sp.verify(sp.level >= self.data.rewardChangeAllowedLevel, "TOO_SOON")
+
     self.data.rewardPercent = newRewardPercent
 
   # Update the quipuswap pool address
@@ -509,6 +515,26 @@ if __name__ == "__main__":
       sender = notGovernor,
       valid = False
     )
+
+  @sp.add_test(name="updateRewardPercent - fails if before lock height")
+  def test():
+    scenario = sp.test_scenario()
+
+    # GIVEN a pool contract which is locked until a blacok
+    rewardChangeAllowedLevel = sp.nat(5)
+    pool = PoolContract(
+      rewardChangeAllowedLevel = rewardChangeAllowedLevel
+    )
+    scenario += pool
+
+    # WHEN updateRewardPercent is called before the level.
+    # THEN the call fails.
+    newRewardPercent = sp.nat(4)
+    scenario += pool.updateRewardPercent(newRewardPercent).run(
+      sender = Addresses.GOVERNOR_ADDRESS,
+      level = sp.as_nat(rewardChangeAllowedLevel - 1),
+      valid = False
+    )    
 
   @sp.add_test(name="updateRewardPercent - can update reward amount")
   def test():
