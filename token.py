@@ -69,7 +69,7 @@ class FA12(sp.Contract):
     def getAllowance(self, params):
         # CHANGED: Add address if needed. This fixes a bug in our tests for checkpoints where you cannot approve
         # before you have a balance.
-        self.addAddressIfNecessary(sp.sender)
+        self.addAddressIfNecessary(params.owner)
 
         # CHANGED: Default to zero to prevent bad map accesses
         sp.result(self.data.balances[params.owner].approvals.get(params.spender, sp.nat(0)))
