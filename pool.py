@@ -87,7 +87,7 @@ class PoolContract(Token.FA12):
     )
         
     
-    metadata_data = sp.bytes_of_string('{ "name": "Quipuswap Liquidating kUSD",  "description": "kUSD Liquidation Pool tied to Quipuswap",  "authors": ["Hover Labs <hello@hover.engineering>"],  "homepage":  "https://kolibri.finance", "interfaces": [ "TZIP-007-2021-01-29"] }'),
+    metadata_data = sp.bytes_of_string('{ "name": "Quipuswap Liquidating kUSD",  "description": "kUSD Liquidation Pool tied to Quipuswap",  "authors": ["Hover Labs <hello@hover.engineering>"],  "homepage":  "https://kolibri.finance", "interfaces": [ "TZIP-007-2021-01-29"] }')
     metadata = sp.big_map(
       l = {
         "": sp.bytes('0x74657a6f732d73746f726167653a64617461'), # "tezos-storage:data"
