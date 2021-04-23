@@ -70,7 +70,7 @@ class PoolContract(Token.FA12):
     token_metadata = sp.map(
       l = {
         "name": sp.bytes('0x517569707573776170204c69717569646174696e67206b555344'), # Quipuswap Liquidating kUSD
-        "decimals": sp.bytes('0x3138'), # 18
+        "decimals": sp.bytes('0x3336'), # 36
         "symbol": sp.bytes('0x514c6b555344'), # QLkUSD
         "icon": sp.bytes('0x2068747470733a2f2f6b6f6c696272692d646174612e73332e616d617a6f6e6177732e636f6d2f6c6f676f2e706e67') # https://kolibri-data.s3.amazonaws.com/logo.png
       },
